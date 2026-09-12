@@ -88,7 +88,7 @@ trap 'kill $MARTIN_PID 2>/dev/null || true' EXIT
 sleep 4
 rm -f "$PACK_OUT/railway.mbtiles"
 python3 "$PIPELINE/bake_tiles.py" --martin "http://127.0.0.1:$MARTIN_PORT" --config "$WORK/martin-bake.yml" \
-  --bbox "$BBOX" --maxzoom "$MAXZOOM" --concurrency "${BAKE_CONCURRENCY:-16}" \
+  --bbox="$BBOX" --maxzoom "$MAXZOOM" --concurrency "${BAKE_CONCURRENCY:-16}" \
   --output "$PACK_OUT/railway.mbtiles" --name "OpenRailwayMap $NAME"
 pmtiles convert "$PACK_OUT/railway.mbtiles" "$PACK_OUT/railway.pmtiles"
 rm -f "$PACK_OUT/railway.mbtiles"

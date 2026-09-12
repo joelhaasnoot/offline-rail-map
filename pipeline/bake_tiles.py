@@ -9,7 +9,7 @@ below an empty tile are skipped (railway features are always present in the
 
 Usage:
   bake_tiles.py --martin http://127.0.0.1:3000 --config martin.yml \
-      --bbox 3.3,50.7,7.3,53.6 --maxzoom 16 --output railway.mbtiles
+      --bbox=3.3,50.7,7.3,53.6 --maxzoom 16 --output railway.mbtiles
 """
 import argparse
 import gzip
@@ -74,7 +74,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--martin", default="http://127.0.0.1:3000")
     ap.add_argument("--config", required=True, help="Martin configuration.yml (function sources)")
-    ap.add_argument("--bbox", required=True, help="min_lon,min_lat,max_lon,max_lat")
+    # Pass as --bbox=... : a value starting with "-" (west of Greenwich) is otherwise taken for a
+    # flag by argparse before Python 3.14.
+    ap.add_argument("--bbox", required=True, help="min_lon,min_lat,max_lon,max_lat (use --bbox=...)")
     ap.add_argument("--minzoom", type=int, default=0)
     ap.add_argument("--maxzoom", type=int, default=16)
     ap.add_argument("--prune-zoom", type=int, default=12)
