@@ -1,0 +1,105 @@
+# Offline Railway Map
+
+An Android app that shows the [OpenRailwayMap](https://openrailwaymap.app) cartography fully
+offline: infrastructure, speed, train protection (signalling), electrification, gauge and operator
+views, exactly like the web app, rendered from country packs you download once.
+
+OpenRailwayMap's tile usage policy forbids bulk-downloading their tiles, so this project rebuilds
+the same vector tiles from OpenStreetMap data with OpenRailwayMap's own open-source (GPL-3.0)
+import pipeline and style, splits them per country and serves them as downloadable packs.
+
+```
+OSM extract (Geofabrik)
+   │  osmium tags-filter (railway features only)
+   ▼
+OpenRailwayMap-vector import  (osm2pgsql + PostGIS, docker)
+   │  Martin renders MVT tiles from the same SQL functions the website uses
+   ▼
+pipeline/bake_tiles.py  → railway.pmtiles   (all layers, z0–16, ~40 MB for the Netherlands)
+planetiler              → basemap.pmtiles   (slim OpenMapTiles basemap, z0–13, ~140 MB for NL)
+   ▼
+manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files)
+```
+
+## Repository layout
+
+| Path | What |
+|------|------|
+| `android/` | Android app (Kotlin, Jetpack Compose, MapLibre Native 13); the Gradle project lives here, the module is `android/app` |
+| `android/app/src/main/assets/style/orm-style.json` | Generated OpenRailwayMap style (see `pipeline/prepare_style.py`) |
+| `android/app/src/main/assets/style/basemap-style.json` | Hand-written light basemap style for the OpenMapTiles schema |
+| `android/app/src/main/assets/sprites`, `assets/font` | Generated OpenRailwayMap symbols and glyphs |
+| `ios/` | (planned) iOS app |
+| `pipeline/build-country.sh` | End-to-end pack build for one Geofabrik region |
+| `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
+| `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
+| `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
+
+## Building packs
+
+Requirements on the build machine: Docker, `osmium`, `martin`, `pmtiles`, `psql`, Python 3 with
+Pillow, Node.js and Java 21 (for Planetiler).
+
+```bash
+pipeline/build-country.sh netherlands            # railway + basemap pack
+pipeline/build-country.sh belgium --no-basemap   # railway only
+pipeline/make_manifest.py pipeline/out --base-url https://packs.example.com
+```
+
+Upload `pipeline/out/` to any static host (S3/R2/GitHub Releases/a web server) and point the app
+at `<base-url>/manifest.json`.
+
+The first run clones `hiddewie/OpenRailwayMap-vector` into `pipeline/work/`. Regenerate the app's
+style assets after upstream style changes with:
+
+```bash
+cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json
+martin --sprite ./symbols --listen-addresses 127.0.0.1:3999 &   # then fetch /sprite/symbols*.json|png and /sdf_sprite/... into pipeline/work/sprites/
+python3 ../../prepare_style.py
+```
+
+Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), which the app uses to
+tell "no data here yet" from "this area is in a pack you haven't downloaded" and to offer that
+download directly on the map.
+
+## Building the app
+
+```bash
+cd android && ./gradlew :app:assembleDebug -PmanifestUrl=https://packs.example.com/manifest.json
+```
+
+Unit tests (pack coverage and manifest parsing):
+
+```bash
+cd android && ./gradlew :app:testDebugUnitTest
+```
+
+Without `-PmanifestUrl` the debug build looks for `http://10.0.2.2:8765/manifest.json`, which is
+the host machine as seen from the Android emulator; serve packs locally with
+`cd pipeline/out && python3 -m http.server 8765`.
+
+## How the style switching works
+
+The upstream style is one big MapLibre style whose layers react to `global-state` values
+(`tracks`, `signals`, `stations`, …). MapLibre Native does not evaluate `global-state`, so
+`StyleBuilder` substitutes the values for the selected view and options into the expressions,
+evaluates every layer's `visibility` expression to a constant and drops hidden layers before
+handing the style to the map. Each installed country pack gets its own copy of the sources and
+layers, so several countries can be shown at once.
+
+## License
+
+The whole project is licensed under the **GNU General Public License v3.0 or later** (see
+`LICENSE`). It is a derivative of the OpenRailwayMap vector style and pipeline, and the parts that
+come from there keep their upstream copyright; `NOTICE` lists exactly which files are derived from
+which project and what they contain:
+
+- OpenRailwayMap-vector (GPL-3.0-or-later, © Hidde Wieringa; earlier styles © Michael Reichert and
+  © Alexander Matheisen): the generated map style, sprite sheets and OpenRailwayMap glyphs, and the
+  import/tile pipeline this project drives.
+- Fira Code (SIL Open Font License 1.1): the FiraCode glyphs.
+- Everything else (Android app code, basemap style, pipeline scripts) was written for this project
+  and is released under the same GPL-3.0-or-later.
+
+Map data © OpenStreetMap contributors (ODbL). Basemap tiles are produced with Planetiler
+(Apache-2.0) in the OpenMapTiles schema (BSD-3-Clause schema, CC-BY 4.0 design).

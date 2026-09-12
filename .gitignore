@@ -1,0 +1,19 @@
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.kotlin/
+
+# Pipeline working data (large downloads, databases, generated tiles)
+pipeline/work/
+pipeline/out/
+
+# Generated app assets (style, sprites, fonts) are committed so a clone builds;
+# regenerate them with pipeline/prepare_style.py after upstream style changes.
+android/app/src/main/assets/style/legend.json
+
+# Python
+__pycache__/

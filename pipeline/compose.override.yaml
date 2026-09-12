@@ -1,0 +1,6 @@
+# Copied next to the OpenRailwayMap-vector compose.yaml by build-country.sh.
+# Uses a non-default host port so a locally installed Postgres on 5432 does not get in the way.
+services:
+  db:
+    ports: !override
+      - '127.0.0.1:5439:5432'
