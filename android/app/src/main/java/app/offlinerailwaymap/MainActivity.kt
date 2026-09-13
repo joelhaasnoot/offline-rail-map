@@ -323,7 +323,6 @@ fun MapScreen() {
         MainSheet(
             initialTab = tab,
             options = options,
-            mode = mode,
             onChange = {
                 options = it
                 it.save()

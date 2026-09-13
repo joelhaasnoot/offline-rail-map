@@ -45,7 +45,6 @@ import app.offlinerailwaymap.data.DownloadState
 import app.offlinerailwaymap.data.InstalledPack
 import app.offlinerailwaymap.data.PackInfo
 import app.offlinerailwaymap.data.PackStore
-import app.offlinerailwaymap.map.MapMode
 import app.offlinerailwaymap.map.MapOptions
 
 fun formatBytes(bytes: Long): String = when {
@@ -54,15 +53,14 @@ fun formatBytes(bytes: Long): String = when {
     else -> "%.0f kB".format(bytes / 1e3)
 }
 
-enum class SheetTab(val label: String) { PACKS("Country packs"), OPTIONS("Map options") }
+enum class SheetTab(val label: String) { PACKS("Country packs"), OPTIONS("Map options"), ABOUT("About") }
 
-/** The single bottom sheet behind the menu button: country packs and map options as two tabs. */
+/** The single bottom sheet behind the menu button: country packs, map options and about. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainSheet(
     initialTab: SheetTab,
     options: MapOptions,
-    mode: MapMode,
     onChange: (MapOptions) -> Unit,
     onDismiss: () -> Unit,
     onShowPack: (InstalledPack) -> Unit,
@@ -78,7 +76,8 @@ fun MainSheet(
             Spacer(Modifier.height(12.dp))
             when (tab) {
                 SheetTab.PACKS -> PacksContent(onShowPack)
-                SheetTab.OPTIONS -> OptionsContent(options, mode, onChange)
+                SheetTab.OPTIONS -> OptionsContent(options, onChange)
+                SheetTab.ABOUT -> AboutContent()
             }
         }
     }
@@ -201,7 +200,7 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
 }
 
 @Composable
-private fun OptionsContent(options: MapOptions, mode: MapMode, onChange: (MapOptions) -> Unit) {
+private fun OptionsContent(options: MapOptions, onChange: (MapOptions) -> Unit) {
     Column(Modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState())) {
             Text("Infrastructure", style = MaterialTheme.typography.titleSmall)
             SwitchRow("Under construction", options.showConstruction) { onChange(options.copy(showConstruction = it)) }
@@ -227,13 +226,6 @@ private fun OptionsContent(options: MapOptions, mode: MapMode, onChange: (MapOpt
             RadioRow("Loading gauge", options.trackLine == "loadingGauge") { onChange(options.copy(trackLine = "loadingGauge")) }
             RadioRow("Track class", options.trackLine == "trackClass") { onChange(options.copy(trackLine = "trackClass")) }
 
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "Current view: ${mode.label}. Map data © OpenStreetMap contributors (ODbL); " +
-                    "cartography from the OpenRailwayMap project (GPL-3.0).",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Spacer(Modifier.height(16.dp))
     }
 }
