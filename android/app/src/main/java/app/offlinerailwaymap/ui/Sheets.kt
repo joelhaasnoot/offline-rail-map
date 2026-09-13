@@ -28,7 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +45,7 @@ import app.offlinerailwaymap.data.DownloadState
 import app.offlinerailwaymap.data.InstalledPack
 import app.offlinerailwaymap.data.PackInfo
 import app.offlinerailwaymap.data.PackStore
+import app.offlinerailwaymap.map.MapMode
 import app.offlinerailwaymap.map.MapOptions
 
 fun formatBytes(bytes: Long): String = when {
@@ -53,14 +54,16 @@ fun formatBytes(bytes: Long): String = when {
     else -> "%.0f kB".format(bytes / 1e3)
 }
 
-enum class SheetTab(val label: String) { PACKS("Country packs"), OPTIONS("Map options"), ABOUT("About") }
+enum class SheetTab(val label: String) { KEY("Key"), PACKS("Country packs"), OPTIONS("Map options"), ABOUT("About") }
 
-/** The single bottom sheet behind the menu button: country packs, map options and about. */
+/** The single bottom sheet behind the menu button: key, country packs, map options and about. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainSheet(
     initialTab: SheetTab,
+    mode: MapMode,
     options: MapOptions,
+    legendContext: LegendContext?,
     onChange: (MapOptions) -> Unit,
     onDismiss: () -> Unit,
     onShowPack: (InstalledPack) -> Unit,
@@ -68,13 +71,14 @@ fun MainSheet(
     var tab by remember { mutableStateOf(initialTab) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding()) {
-            TabRow(selectedTabIndex = tab.ordinal) {
+            PrimaryScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 0.dp) {
                 SheetTab.entries.forEach { t ->
                     Tab(selected = tab == t, onClick = { tab = t }, text = { Text(t.label) })
                 }
             }
             Spacer(Modifier.height(12.dp))
             when (tab) {
+                SheetTab.KEY -> KeyContent(mode, options, legendContext)
                 SheetTab.PACKS -> PacksContent(onShowPack)
                 SheetTab.OPTIONS -> OptionsContent(options, onChange)
                 SheetTab.ABOUT -> AboutContent()

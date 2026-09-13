@@ -105,6 +105,13 @@ To test packs built locally, serve them with `cd pipeline/out && python3 -m http
 build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
 Android emulator).
 
+## Map key
+
+The Key tab explains the colours and symbols of the current view, using OpenRailwayMap's own legend
+definitions (`legend.json`, copied by `pipeline/prepare_style.py`). Each row is drawn by MapLibre
+from sample features styled with the same layers as the map, so the key always matches it. By default
+it lists only what is on screen; "Everything" lists the whole view.
+
 ## How the style switching works
 
 The upstream style is one big MapLibre style whose layers react to `global-state` values

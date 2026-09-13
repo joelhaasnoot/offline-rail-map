@@ -40,7 +40,6 @@ object StyleBuilder {
 
     fun build(context: Context, mode: MapMode, options: MapOptions, packs: List<InstalledPack>): String {
         val (orm, base) = load(context)
-        val state = globalState(orm, mode, options)
 
         val out = JSONObject()
         out.put("version", 8)
@@ -107,12 +106,46 @@ object StyleBuilder {
                 sources.put("${name}__${pack.info.id}", src)
             }
         }
-        val ormLayers = orm.getJSONArray("layers")
+        val processed = ormLayers(context, mode, options)
+        for (layer in processed.layers) {
+            val text = layer.toString()
+            for (pack in packs) {
+                val copy = JSONObject(text)
+                copy.put("id", "${layer.getString("id")}__${pack.info.id}")
+                copy.put("source", "${layer.getString("source")}__${pack.info.id}")
+                layers.put(copy)
+            }
+        }
+        val hidden = processed.hidden
+        out.put("sources", sources)
+        out.put("layers", layers)
+        Log.i(TAG, "built style '${mode.id}' for ${packs.size} pack(s): ${layers.length()} layers, $hidden upstream layers hidden")
+        return out.toString()
+    }
+
+    /** The upstream layers that are visible for a view and options, with `global-state` resolved. */
+    class OrmLayers(val layers: List<JSONObject>, val hidden: Int, val state: Map<String, Any?>, val sprite: String, val glyphs: String)
+
+    private var ormLayersKey: Pair<MapMode, MapOptions>? = null
+    private var ormLayersCache: OrmLayers? = null
+
+    @Synchronized
+    fun ormLayers(context: Context, mode: MapMode, options: MapOptions): OrmLayers {
+        if (ormLayersKey == mode to options) {
+            return ormLayersCache!!
+        }
+        val (orm, _) = load(context)
+        val state = globalState(orm, mode, options)
+        val ormSources = orm.getJSONObject("sources")
+        val vectorSources = ormSources.keys().asSequence()
+            .filter { ormSources.getJSONObject(it).optString("type") == "vector" }
+            .toSet()
+        val result = ArrayList<JSONObject>()
         var hidden = 0
+        val ormLayers = orm.getJSONArray("layers")
         for (i in 0 until ormLayers.length()) {
             val layer = ormLayers.getJSONObject(i)
-            val sourceName = layer.optString("source")
-            if (sourceName !in vectorSources) {
+            if (layer.optString("source") !in vectorSources) {
                 continue
             }
             val substituted = simplify(substitute(layer, state)) as JSONObject
@@ -135,18 +168,12 @@ object StyleBuilder {
                 }
                 substituted.remove("filter")
             }
-            val text = substituted.toString()
-            for (pack in packs) {
-                val copy = JSONObject(text)
-                copy.put("id", "${layer.getString("id")}__${pack.info.id}")
-                copy.put("source", "${sourceName}__${pack.info.id}")
-                layers.put(copy)
-            }
+            result.add(substituted)
         }
-        out.put("sources", sources)
-        out.put("layers", layers)
-        Log.i(TAG, "built style '${mode.id}' for ${packs.size} pack(s): ${layers.length()} layers, $hidden upstream layers hidden")
-        return out.toString()
+        return OrmLayers(result, hidden, state, orm.getString("sprite"), orm.getString("glyphs")).also {
+            ormLayersKey = mode to options
+            ormLayersCache = it
+        }
     }
 
     private fun pmtilesUrl(file: File): String = "pmtiles://file://" + file.absolutePath

@@ -186,6 +186,34 @@ def merge_sprites(suffix):
     print(f"sprites{suffix}: {len(index)} icons, {merged.width}x{merged.height}")
 
 
+def prepare_legend():
+    """Copy the upstream legend (what each colour/symbol means), minus sources the app does not have."""
+    legend = json.load(open(os.path.join(WORK, "legend.json"), encoding="utf-8"))
+    legend.pop("route", None)  # the app has no route view
+
+    def add_localized_name(props):
+        # The tile server adds localized_name (the name in the requested language) to stations;
+        # the legend samples only carry name, which would leave station samples without text.
+        if props and "name" in props and "localized_name" not in props:
+            props["localized_name"] = props["name"]
+
+    for style in legend.values():
+        style["sourceLayers"] = {
+            name: data for name, data in style["sourceLayers"].items()
+            if name.split("-", 1)[0] not in DROP_SOURCES
+        }
+        for data in style["sourceLayers"].values():
+            for item in data.get("features", []):
+                add_localized_name(item.get("properties"))
+                for variant in item.get("variants", []):
+                    add_localized_name(variant.get("properties"))
+    os.makedirs(os.path.join(ASSETS, "style"), exist_ok=True)
+    with open(os.path.join(ASSETS, "style", "legend.json"), "w", encoding="utf-8") as f:
+        json.dump(legend, f, separators=(",", ":"), ensure_ascii=False)
+    entries = sum(len(d.get("features", [])) for st in legend.values() for d in st["sourceLayers"].values())
+    print(f"legend: {len(legend)} views, {entries} entries")
+
+
 def copy_fonts():
     src = os.path.join(WORK, "OpenRailwayMap-vector", "proxy", "font")
     dst = os.path.join(ASSETS, "font")
@@ -197,6 +225,7 @@ def copy_fonts():
 
 if __name__ == "__main__":
     prepare_style()
+    prepare_legend()
     merge_sprites("")
     merge_sprites("@2x")
     copy_fonts()

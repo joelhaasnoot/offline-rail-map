@@ -6,6 +6,12 @@ package app.offlinerailwaymap
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.RectF
+import app.offlinerailwaymap.map.Legend
+import app.offlinerailwaymap.map.LegendData
+import app.offlinerailwaymap.ui.LegendContext
+import com.google.gson.JsonElement
+import kotlin.math.floor
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -286,7 +292,7 @@ fun MapScreen() {
                 }
             })
             Spacer(Modifier.height(12.dp))
-            FloatingActionButton(onClick = { sheetTab = SheetTab.PACKS }) {
+            FloatingActionButton(onClick = { sheetTab = if (installed.isEmpty()) SheetTab.PACKS else SheetTab.KEY }) {
                 Icon(Icons.Default.Menu, contentDescription = "Country packs and map options")
             }
         }
@@ -319,10 +325,27 @@ fun MapScreen() {
         }
     }
 
+    // Capture what the map shows when the sheet opens, for the key's "On screen" filter.
+    var legendContext by remember { mutableStateOf<LegendContext?>(null) }
+    LaunchedEffect(sheetTab != null) {
+        legendContext = null
+        val m = map ?: return@LaunchedEffect
+        if (sheetTab == null) {
+            return@LaunchedEffect
+        }
+        withContext(Dispatchers.Default) {
+            LegendData.view(context, mode.id)
+            StyleBuilder.ormLayers(context, mode, options)
+        }
+        legendContext = legendContextFor(context, m, mapView, mode, options, installed)
+    }
+
     sheetTab?.let { tab ->
         MainSheet(
             initialTab = tab,
+            mode = mode,
             options = options,
+            legendContext = legendContext,
             onChange = {
                 options = it
                 it.save()
@@ -334,6 +357,48 @@ fun MapScreen() {
             },
         )
     }
+}
+
+/** The zoom and the legend feature keys of everything the main map currently renders on screen. */
+private fun legendContextFor(
+    context: android.content.Context,
+    map: MapLibreMap,
+    mapView: MapView,
+    mode: MapMode,
+    options: MapOptions,
+    packs: List<InstalledPack>,
+): LegendContext {
+    val zoom = floor(map.cameraPosition.zoom).toInt()
+    val style = map.style ?: return LegendContext(zoom, emptyMap())
+    val sourceLayers = LegendData.view(context, mode.id).optJSONObject("sourceLayers") ?: return LegendContext(zoom, emptyMap())
+    val screen = RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat())
+    val inView = HashMap<String, Set<String>>()
+    val layersBySource = StyleBuilder.ormLayers(context, mode, options).layers
+        .filter { Legend.visibleAtZoom(it, zoom) }
+        .groupBy { Legend.sourceName(it) }
+    for ((sourceName, layers) in layersBySource) {
+        val legendSource = sourceLayers.optJSONObject(sourceName) ?: continue
+        val ids = layers.flatMap { layer -> packs.map { "${layer.getString("id")}__${it.info.id}" } }
+            .filter { style.getLayer(it) != null }
+        if (ids.isEmpty()) {
+            continue
+        }
+        val features = map.queryRenderedFeatures(screen, *ids.toTypedArray())
+        if (features.isNotEmpty()) {
+            inView[sourceName] = features.flatMapTo(HashSet()) { feature ->
+                Legend.featureKeys(legendSource) { key -> jsonValue(feature.getProperty(key)) }
+            }
+        }
+    }
+    return LegendContext(zoom, inView)
+}
+
+private fun jsonValue(element: JsonElement?): Any? = when {
+    element == null || element.isJsonNull -> null
+    element.isJsonPrimitive && element.asJsonPrimitive.isBoolean -> element.asBoolean
+    element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asDouble
+    element.isJsonPrimitive -> element.asString
+    else -> element.toString()
 }
 
 private fun fitToPacks(map: MapLibreMap, packs: List<InstalledPack>) {
