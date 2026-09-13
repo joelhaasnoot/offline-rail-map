@@ -31,6 +31,7 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `android/app/src/main/assets/sprites`, `assets/font` | Generated OpenRailwayMap symbols and glyphs |
 | `ios/` | (planned) iOS app |
 | `pipeline/build-country.sh` | End-to-end pack build for one Geofabrik region |
+| `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
 | `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
@@ -61,6 +62,17 @@ python3 ../../prepare_style.py
 Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), which the app uses to
 tell "no data here yet" from "this area is in a pack you haven't downloaded" and to offer that
 download directly on the map.
+
+## World overview
+
+The app ships a small world map (zoom 0–4, about 3 MB) so it is never blank: coastlines, borders
+and glaciers from Natural Earth, with continent, country, state, city and sea labels from
+OpenStreetMap. Inside a downloaded country the detailed pack takes over; the app masks the pack's
+region outline so the coarse world coastline never shows through. Rebuild it with:
+
+```bash
+pipeline/build-world.sh
+```
 
 ## Building the app
 

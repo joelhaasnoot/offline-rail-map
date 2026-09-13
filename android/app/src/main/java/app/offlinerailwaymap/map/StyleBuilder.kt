@@ -20,7 +20,8 @@ import java.util.Calendar
  * `visibility` expression to a constant and drop hidden layers.
  *
  * Every installed country pack gets its own copy of the sources and layers, pointing at the
- * PMTiles files on disk.
+ * PMTiles files on disk. Underneath sits a low-zoom world overview bundled with the app (see
+ * [WorldLayers]).
  */
 object StyleBuilder {
     private const val TAG = "StyleBuilder"
@@ -49,29 +50,50 @@ object StyleBuilder {
         val sources = JSONObject()
         val layers = JSONArray()
 
-        // --- Basemap (one source per pack that ships one) ---
-        val basemapSource = base.getJSONObject("sources").getJSONObject("basemap")
+        // --- Basemap ---
+        // Order: background, world overview, mask over downloaded regions, detailed pack basemaps.
+        val baseLayers = (0 until base.getJSONArray("layers").length()).map { base.getJSONArray("layers").getJSONObject(it) }
+        val backgroundColor = baseLayers.firstOrNull { it.optString("type") == "background" }
+            ?.optJSONObject("paint")?.optString("background-color")?.ifEmpty { null } ?: "#f4f1ec"
+        baseLayers.filter { !it.has("source") }.forEach { layers.put(JSONObject(it.toString())) }
+
+        val world = WorldMap.file(context)
+        val worldLayers = if (world == null) {
+            emptyList()
+        } else {
+            sources.put(WorldLayers.SOURCE, WorldLayers.source(pmtilesUrl(world)))
+            baseLayers.filter { it.has("source") }.mapNotNull { WorldLayers.worldCopy(it) }
+        }
+        val (worldLabels, worldShapes) = worldLayers.partition { it.optString("type") == "symbol" }
+        worldShapes.forEach { layers.put(it) }
+
         val basemapPacks = packs.filter { it.basemapFile != null }
+        val mask = WorldLayers.maskGeometry(basemapPacks.map { it.info })
+        if (mask != null) {
+            sources.put(WorldLayers.MASK_SOURCE, WorldLayers.maskSource(mask))
+            layers.put(WorldLayers.maskLayer(backgroundColor))
+        }
+
+        val basemapSource = base.getJSONObject("sources").getJSONObject("basemap")
         for (pack in basemapPacks) {
             val src = JSONObject(basemapSource.toString())
             src.put("url", pmtilesUrl(pack.basemapFile!!))
             sources.put("basemap__${pack.info.id}", src)
         }
-        val baseLayers = base.getJSONArray("layers")
-        for (i in 0 until baseLayers.length()) {
-            val layer = baseLayers.getJSONObject(i)
-            if (!layer.has("source")) {
-                layers.put(JSONObject(layer.toString()))
-                continue
-            }
+        for (layer in baseLayers.filter { it.has("source") }) {
             val text = layer.toString()
             for (pack in basemapPacks) {
                 val copy = JSONObject(text)
                 copy.put("id", "${layer.getString("id")}__${pack.info.id}")
                 copy.put("source", "basemap__${pack.info.id}")
+                if (layer.getString("id") == "place-country") {
+                    // Match the English country names of the world overview next door.
+                    copy.optJSONObject("layout")?.let { l -> l.opt("text-field")?.let { l.put("text-field", WorldLayers.preferEnglish(it)) } }
+                }
                 layers.put(copy)
             }
         }
+        worldLabels.forEach { layers.put(if (mask == null) it else WorldLayers.hideInsideMask(it, mask)) }
 
         // --- OpenRailwayMap ---
         val ormSources = orm.getJSONObject("sources")

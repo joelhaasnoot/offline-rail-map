@@ -31,6 +31,10 @@ OpenStreetMap data (https://www.openstreetmap.org/copyright)
   License: Open Database License 1.0. Country packs built with the pipeline contain OSM data
   and must be distributed with attribution to OpenStreetMap contributors.
 
+Natural Earth (https://www.naturalearthdata.com)
+  License: public domain. Used, together with OpenStreetMap place points, for the bundled world
+  overview android/app/src/main/assets/world/world.pmtiles built by pipeline/build-world.sh.
+
 OpenMapTiles schema (https://openmaptiles.org)
   Schema: BSD-3-Clause; cartography design: CC-BY 4.0. The basemap packs use this schema;
   android/app/src/main/assets/style/basemap-style.json is an original style written for this project.

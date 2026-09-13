@@ -41,6 +41,11 @@ android {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
 
+    androidResources {
+        // Lets the app read the bundled world map's size without decompressing it.
+        noCompress += "pmtiles"
+    }
+
     testOptions {
         unitTests.isReturnDefaultValues = true
     }

@@ -877,6 +877,50 @@
         "text-halo-color": "#f4f1ec",
         "text-halo-width": 1.5
       }
+    },
+    {
+      "id": "place-continent",
+      "type": "symbol",
+      "source": "basemap",
+      "source-layer": "place",
+      "maxzoom": 3,
+      "filter": [
+        "==",
+        [
+          "get",
+          "class"
+        ],
+        "continent"
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "name"
+        ],
+        "text-font": [
+          "OpenRailwayMap-Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          0,
+          11,
+          2,
+          14
+        ],
+        "text-letter-spacing": 0.08,
+        "text-max-width": 7
+      },
+      "paint": {
+        "text-color": "#8a7f76",
+        "text-halo-color": "#f4f1ec",
+        "text-halo-width": 1.5
+      }
     }
   ]
 }
