@@ -17,7 +17,7 @@ android {
         // Where the app looks for the list of downloadable country packs.
         // Override with -PmanifestUrl=... when building.
         val manifestUrl = (project.findProperty("manifestUrl") as String?)
-            ?: "http://10.0.2.2:8765/manifest.json"
+            ?: "https://data.offlinerailmap.com/manifest.json"
         buildConfigField("String", "MANIFEST_URL", "\"$manifestUrl\"")
     }
 

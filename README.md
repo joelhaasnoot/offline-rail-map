@@ -65,7 +65,7 @@ download directly on the map.
 ## Building the app
 
 ```bash
-cd android && ./gradlew :app:assembleDebug -PmanifestUrl=https://packs.example.com/manifest.json
+cd android && ./gradlew :app:assembleDebug
 ```
 
 Unit tests (pack coverage and manifest parsing):
@@ -74,9 +74,10 @@ Unit tests (pack coverage and manifest parsing):
 cd android && ./gradlew :app:testDebugUnitTest
 ```
 
-Without `-PmanifestUrl` the debug build looks for `http://10.0.2.2:8765/manifest.json`, which is
-the host machine as seen from the Android emulator; serve packs locally with
-`cd pipeline/out && python3 -m http.server 8765`.
+By default the app reads the published packs from `https://data.offlinerailmap.com/manifest.json`.
+To test packs built locally, serve them with `cd pipeline/out && python3 -m http.server 8765` and
+build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
+Android emulator).
 
 ## How the style switching works
 
