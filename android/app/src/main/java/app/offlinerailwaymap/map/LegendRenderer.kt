@@ -41,6 +41,7 @@ object LegendData {
 class LegendRenderer(context: Context) {
     private val appContext = context.applicationContext
     private val density = context.resources.displayMetrics.density
+    private val composer = SpriteComposer.forPixelRatio(context, density)
     private val mutex = Mutex()
     private var snapshotter: MapSnapshotter? = null
     private var loadedStyle: String? = null
@@ -87,12 +88,18 @@ class LegendRenderer(context: Context) {
                 .withAttribution(false),
         ).also {
             // Some upstream icons (e.g. "...@bottom" signal compositions) are generated at runtime by
-            // the website and are not in the sprite. Without an image the snapshot would wait forever.
+            // the website and are not in the sprite, so compose them here too. Anything that cannot be
+            // composed gets a transparent placeholder: without an image the snapshot would wait forever.
             it.setObserver(object : MapSnapshotter.Observer {
                 override fun onDidFinishLoadingStyle() {}
 
                 override fun onStyleImageMissing(imageName: String) {
-                    it.addImage(imageName, placeholder, false)
+                    val images = composer.compose(imageName)
+                    if (images != null) {
+                        images.addTo(it::addImage)
+                    } else {
+                        it.addImage(imageName, placeholder, false)
+                    }
                 }
             })
             snapshotter = it

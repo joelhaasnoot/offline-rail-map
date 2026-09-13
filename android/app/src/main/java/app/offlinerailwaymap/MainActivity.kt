@@ -68,6 +68,7 @@ import app.offlinerailwaymap.data.PackStore
 import app.offlinerailwaymap.data.Prefs
 import app.offlinerailwaymap.map.MapMode
 import app.offlinerailwaymap.map.MapOptions
+import app.offlinerailwaymap.map.SpriteComposer
 import app.offlinerailwaymap.map.StyleBuilder
 import app.offlinerailwaymap.ui.Coverage
 import app.offlinerailwaymap.ui.CoverageBanner
@@ -165,6 +166,15 @@ fun MapScreen() {
                 Prefs.camera?.let { (lat, lon, zoom) ->
                     m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom))
                 }
+                // Stacked and positioned signal icons ("a|b@bottom") are not in the sprite; the website
+                // composes them when the map asks for them, and so do we. The image must be added before
+                // the listener returns: MapLibre does not lay out symbols again for images added later.
+                val composer = SpriteComposer.forPixelRatio(context, context.resources.displayMetrics.density)
+                view.addOnStyleImageMissingListener { id ->
+                    composer.compose(id)?.let { images ->
+                        m.getStyle { style -> images.addTo(style::addImage) }
+                    }
+                }
                 m.addOnCameraIdleListener {
                     val pos = m.cameraPosition
                     val target = pos.target ?: return@addOnCameraIdleListener
@@ -177,6 +187,13 @@ fun MapScreen() {
         }
     }
     MapViewLifecycle(mapView)
+
+    // Decode the icons that composed icons are made of before the map first asks for one.
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            SpriteComposer.forPixelRatio(context, context.resources.displayMetrics.density).warmUp()
+        }
+    }
 
     // Know which packs exist so the empty state can offer the right download.
     LaunchedEffect(Unit) {
