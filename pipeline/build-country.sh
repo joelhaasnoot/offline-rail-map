@@ -10,6 +10,7 @@
 #          pipeline/build-country.sh europe/belgium     (nested ids use the last path segment as pack id)
 #
 # Produces pipeline/out/<id>/railway.pmtiles (+ basemap.pmtiles, pack-meta.json).
+# Finished files replace the old ones in one step, so a pack being rebuilt can keep being served.
 # Afterwards run: pipeline/make_manifest.py pipeline/out --base-url https://your.host/packs
 #
 # Set DELETE_EXTRACT=1 to remove the downloaded .osm.pbf afterwards (saves disk on large countries).
@@ -20,7 +21,7 @@ REGION="${1:?usage: build-country.sh <geofabrik-region-id> [--maxzoom N] [--no-b
 shift
 MAXZOOM=16
 BASEMAP=1
-BASEMAP_MAXZOOM=13
+BASEMAP_MAXZOOM=12 # zoom 13 looks nearly the same but is about 2.5x larger
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --maxzoom) MAXZOOM="$2"; shift 2 ;;
@@ -90,7 +91,8 @@ rm -f "$PACK_OUT/railway.mbtiles"
 python3 "$PIPELINE/bake_tiles.py" --martin "http://127.0.0.1:$MARTIN_PORT" --config "$WORK/martin-bake.yml" \
   --bbox="$BBOX" --maxzoom "$MAXZOOM" --concurrency "${BAKE_CONCURRENCY:-16}" \
   --output "$PACK_OUT/railway.mbtiles" --name "OpenRailwayMap $NAME"
-pmtiles convert "$PACK_OUT/railway.mbtiles" "$PACK_OUT/railway.pmtiles"
+pmtiles convert "$PACK_OUT/railway.mbtiles" "$PACK_OUT/railway.new.pmtiles"
+mv -f "$PACK_OUT/railway.new.pmtiles" "$PACK_OUT/railway.pmtiles"
 rm -f "$PACK_OUT/railway.mbtiles"
 kill $MARTIN_PID 2>/dev/null || true
 (cd "$ORM" && docker compose stop db)
@@ -100,9 +102,10 @@ if [[ "$BASEMAP" == "1" ]]; then
   if [[ ! -f "$WORK/planetiler.jar" ]]; then
     curl -fL -o "$WORK/planetiler.jar" https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
   fi
-  (cd "$WORK" && "$JAVA" -Xmx6g -jar planetiler.jar --osm-path="$PBF" --output="$PACK_OUT/basemap.pmtiles" --download \
+  (cd "$WORK" && "$JAVA" -Xmx6g -jar planetiler.jar --osm-path="$PBF" --output="$PACK_OUT/basemap.new.pmtiles" --download \
     --only_layers=water,water_name,waterway,landcover,landuse,park,boundary,aeroway,transportation,place \
     --maxzoom="$BASEMAP_MAXZOOM" --languages=en,nl,de,fr --force)
+  mv -f "$PACK_OUT/basemap.new.pmtiles" "$PACK_OUT/basemap.pmtiles"
 fi
 
 echo "== Pack metadata =="

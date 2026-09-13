@@ -16,7 +16,7 @@ OpenRailwayMap-vector import  (osm2pgsql + PostGIS, docker)
    │  Martin renders MVT tiles from the same SQL functions the website uses
    ▼
 pipeline/bake_tiles.py  → railway.pmtiles   (all layers, z0–16, ~40 MB for the Netherlands)
-planetiler              → basemap.pmtiles   (slim OpenMapTiles basemap, z0–13, ~140 MB for NL)
+planetiler              → basemap.pmtiles   (slim OpenMapTiles basemap, z0–12, ~55 MB for NL)
    ▼
 manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files)
 ```
@@ -31,6 +31,7 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `android/app/src/main/assets/sprites`, `assets/font` | Generated OpenRailwayMap symbols and glyphs |
 | `ios/` | (planned) iOS app |
 | `pipeline/build-country.sh` | End-to-end pack build for one Geofabrik region |
+| `pipeline/build-all.sh` | Rebuilds every pack listed in a manifest and refreshes the manifest |
 | `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
 | `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
@@ -39,12 +40,25 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 ## Building packs
 
 Requirements on the build machine: Docker, `osmium`, `martin`, `pmtiles`, `psql`, Python 3 with
-Pillow, Node.js and Java 21 (for Planetiler).
+Pillow and Java 21 (for Planetiler). Node.js is only needed to regenerate the app's style assets.
 
 ```bash
-pipeline/build-country.sh netherlands            # railway + basemap pack
-pipeline/build-country.sh belgium --no-basemap   # railway only
+pipeline/build-country.sh netherlands                      # railway + basemap pack
+pipeline/build-country.sh belgium --no-basemap             # railway only
+pipeline/build-country.sh germany --basemap-maxzoom 13     # more basemap detail (about 2.5x larger)
 pipeline/make_manifest.py pipeline/out --base-url https://packs.example.com
+```
+
+Railway tiles go to zoom 16. Basemaps stop at zoom 12 by default: compared side by side with zoom 13
+they look nearly identical, at 40% of the size (Netherlands: 54 MB instead of 142 MB).
+
+To rebuild every pack that is in the current manifest (smallest first, refreshing the manifest after
+each pack, failures logged to `pipeline/work/logs/` and skipped):
+
+```bash
+pipeline/build-all.sh                          # packs listed in pipeline/out/manifest.json
+pipeline/build-all.sh --only belgium,france    # a subset
+pipeline/build-all.sh --dry-run                # show the plan without building
 ```
 
 Upload `pipeline/out/` to any static host (S3/R2/GitHub Releases/a web server) and point the app
