@@ -11,20 +11,24 @@ import urllib.request
 INDEX_URL = "https://download.geofabrik.de/index-v1-nogeom.json"
 
 
+def load_index(cache_dir):
+    """Return {region id: properties} from the Geofabrik index, cached for a week in cache_dir."""
+    path = os.path.join(cache_dir, "geofabrik-index.json")
+    if not os.path.isfile(path) or time.time() - os.path.getmtime(path) > 7 * 86400:
+        os.makedirs(cache_dir, exist_ok=True)
+        urllib.request.urlretrieve(INDEX_URL, path)
+    index = json.load(open(path))
+    return {f["properties"]["id"]: f["properties"] for f in index["features"]}
+
+
 def main():
     if len(sys.argv) != 3:
         sys.exit("usage: geofabrik.py <cache-dir> <region-id>")
     cache_dir, region = sys.argv[1], sys.argv[2]
-    path = os.path.join(cache_dir, "geofabrik-index.json")
-    if not os.path.isfile(path) or time.time() - os.path.getmtime(path) > 7 * 86400:
-        urllib.request.urlretrieve(INDEX_URL, path)
-    index = json.load(open(path))
-    for feature in index["features"]:
-        p = feature["properties"]
-        if p["id"] == region:
-            print("\t".join([p["urls"]["pbf"], p["name"], p.get("parent", "")]))
-            return
-    sys.exit(f"unknown Geofabrik region '{region}'")
+    p = load_index(cache_dir).get(region)
+    if p is None:
+        sys.exit(f"unknown Geofabrik region '{region}'")
+    print("\t".join([p["urls"]["pbf"], p["name"], p.get("parent", "")]))
 
 
 if __name__ == "__main__":

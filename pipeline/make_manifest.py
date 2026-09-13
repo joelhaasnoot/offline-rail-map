@@ -12,14 +12,28 @@ import argparse
 import datetime
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from geofabrik import load_index  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out_dir")
     ap.add_argument("--base-url", required=True, help="public URL under which <out-dir> is served (no trailing slash)")
+    ap.add_argument(
+        "--geofabrik-cache",
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "work"),
+        help="directory holding the cached Geofabrik index (used for display names of regions)",
+    )
     args = ap.parse_args()
     base = args.base_url.rstrip("/")
+    try:
+        regions = load_index(args.geofabrik_cache)
+    except Exception as e:  # offline: fall back to the app formatting region ids itself
+        print(f"warning: no Geofabrik index, region names left out ({e})")
+        regions = {}
 
     packs = []
     for pack_id in sorted(os.listdir(args.out_dir)):
@@ -34,6 +48,7 @@ def main():
             "id": pack_id,
             "name": meta["name"],
             "region": meta.get("region", ""),
+            "region_name": regions.get(meta.get("region", ""), {}).get("name", ""),
             "railway_url": f"{base}/{pack_id}/railway.pmtiles",
             "railway_bytes": os.path.getsize(railway),
             "basemap_url": f"{base}/{pack_id}/basemap.pmtiles" if os.path.isfile(basemap) else None,

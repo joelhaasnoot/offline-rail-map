@@ -22,7 +22,12 @@ data class PackInfo(
     val version: Int,
     /** Outer rings of the region polygon as [lon, lat] pairs; empty when unknown (fall back to bbox). */
     val coverage: List<List<DoubleArray>> = emptyList(),
+    /** Display name of [region] from the manifest, e.g. "North America"; empty in older manifests. */
+    val regionName: String = "",
 ) {
+    /** Human-readable parent region: the manifest's name, or the id made readable. */
+    val regionLabel: String get() = regionName.ifBlank { regionLabelFromId(region) }
+
     val totalBytes: Long get() = railwayBytes + basemapBytes
 
     /** True when the point lies inside the pack's region polygon (or its bbox when no polygon is known). */
@@ -53,6 +58,7 @@ data class PackInfo(
         put("id", id)
         put("name", name)
         put("region", region)
+        put("region_name", regionName)
         put("railway_url", railwayUrl)
         put("railway_bytes", railwayBytes)
         put("basemap_url", basemapUrl ?: JSONObject.NULL)
@@ -78,8 +84,20 @@ data class PackInfo(
                 dataDate = o.optString("data_date", ""),
                 version = o.optInt("version", 1),
                 coverage = parseCoverage(o.optJSONArray("coverage")),
+                regionName = o.optString("region_name", ""),
             )
         }
+
+        private val lowercaseWords = setOf("and", "of", "the")
+
+        /** "north-america" -> "North America", "australia-oceania" -> "Australia Oceania". */
+        fun regionLabelFromId(id: String): String =
+            id.split('-', '_', ' ')
+                .filter { it.isNotEmpty() }
+                .mapIndexed { i, word ->
+                    if (i > 0 && word in lowercaseWords) word else word.replaceFirstChar { it.uppercase() }
+                }
+                .joinToString(" ")
 
         private fun parseCoverage(arr: JSONArray?): List<List<DoubleArray>> {
             if (arr == null) {

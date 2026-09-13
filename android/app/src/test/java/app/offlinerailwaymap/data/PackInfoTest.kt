@@ -63,4 +63,22 @@ class PackInfoTest {
         assertTrue(info.contains(0.5, 0.5))
         assertEquals(2, info.version)
     }
+
+    @Test
+    fun regionLabelMakesGeofabrikIdsReadable() {
+        assertEquals("North America", PackInfo.regionLabelFromId("north-america"))
+        assertEquals("Europe", PackInfo.regionLabelFromId("europe"))
+        assertEquals("Australia Oceania", PackInfo.regionLabelFromId("australia-oceania"))
+        assertEquals("", PackInfo.regionLabelFromId(""))
+    }
+
+    @Test
+    fun regionLabelPrefersTheManifestName() {
+        val canada = TestPacks.netherlands.copy(id = "canada", region = "north-america")
+        assertEquals("North America", canada.regionLabel)
+        val oceania = canada.copy(region = "australia-oceania", regionName = "Australia and Oceania")
+        assertEquals("Australia and Oceania", oceania.regionLabel)
+        val restored = PackInfo.fromJson(JSONObject(oceania.toJson().toString()))
+        assertEquals("Australia and Oceania", restored.regionLabel)
+    }
 }

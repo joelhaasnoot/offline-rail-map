@@ -101,7 +101,7 @@ private fun PacksContent(onShowPack: (InstalledPack) -> Unit) {
     // Installed packs that are no longer in the manifest still need to be listed.
     val installedById = installed.associateBy { it.info.id }
     val rows: List<PackInfo> = (available + installed.map { it.info }.filter { p -> available.none { it.id == p.id } })
-        .sortedWith(compareBy({ it.region }, { it.name }))
+        .sortedWith(compareBy({ it.regionLabel }, { it.name }))
 
     val listState = rememberLazyListState()
     // The error is inserted above the first row; the list would otherwise stay anchored to that
@@ -152,7 +152,7 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
             Column(Modifier.weight(1f)) {
                 Text(pack.name, style = MaterialTheme.typography.titleMedium)
                 val details = buildString {
-                    append(pack.region.replaceFirstChar { it.uppercase() })
+                    append(pack.regionLabel)
                     append(" · ")
                     append(formatBytes(pack.totalBytes))
                     if (pack.dataDate.isNotEmpty()) {
