@@ -11,23 +11,19 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -102,32 +98,38 @@ private fun PacksContent(onShowPack: (InstalledPack) -> Unit) {
         }
     }
 
+    // Installed packs that are no longer in the manifest still need to be listed.
+    val installedById = installed.associateBy { it.info.id }
+    val rows: List<PackInfo> = (available + installed.map { it.info }.filter { p -> available.none { it.id == p.id } })
+        .sortedWith(compareBy({ it.region }, { it.name }))
+
+    val listState = rememberLazyListState()
+    // The error is inserted above the first row; the list would otherwise stay anchored to that
+    // row and leave the message scrolled out of view.
+    LaunchedEffect(error) {
+        if (error != null) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     Column(Modifier.padding(horizontal = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.weight(1f))
-                if (loading) {
-                    CircularProgressIndicator(Modifier.width(24.dp).height(24.dp), strokeWidth = 2.dp)
+        PullToRefreshBox(
+            isRefreshing = loading,
+            onRefresh = { PackStore.refreshManifest() },
+            modifier = Modifier.heightIn(max = 520.dp),
+        ) {
+            // A minimum height keeps the list pullable while it is still empty.
+            LazyColumn(Modifier.fillMaxWidth().heightIn(min = 160.dp), state = listState) {
+                if (error != null) {
+                    item(key = "error") {
+                        Text(
+                            "Could not load the pack list: $error. Pull down to try again.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        )
+                    }
                 }
-                IconButton(onClick = { PackStore.refreshManifest() }) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh list")
-                }
-            }
-            if (error != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Could not load the pack list: $error",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-
-            // Installed packs that are no longer in the manifest still need to be listed.
-            val installedById = installed.associateBy { it.info.id }
-            val rows: List<PackInfo> = (available + installed.map { it.info }.filter { p -> available.none { it.id == p.id } })
-                .sortedWith(compareBy({ it.region }, { it.name }))
-
-            LazyColumn(Modifier.heightIn(max = 480.dp)) {
                 items(rows, key = { it.id }) { pack ->
                     PackRow(
                         pack = pack,
@@ -138,7 +140,8 @@ private fun PacksContent(onShowPack: (InstalledPack) -> Unit) {
                     HorizontalDivider()
                 }
             }
-            Spacer(Modifier.height(16.dp))
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 

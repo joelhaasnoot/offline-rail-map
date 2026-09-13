@@ -80,8 +80,9 @@ object PackStore {
 
     fun refreshManifest(url: String = manifestUrl) {
         manifestUrl = url
+        // Flip the flag before launching so a pull-to-refresh indicator does not flicker.
+        _manifestLoading.value = true
         scope.launch {
-            _manifestLoading.value = true
             _manifestError.value = null
             try {
                 val body = http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
