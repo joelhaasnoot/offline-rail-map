@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +77,7 @@ import app.offlinerailwaymap.ui.coverageFor
 import app.offlinerailwaymap.ui.LocationButton
 import app.offlinerailwaymap.ui.LocationBlue
 import app.offlinerailwaymap.ui.MainSheet
+import app.offlinerailwaymap.ui.RailChipContainer
 import app.offlinerailwaymap.ui.RailColorScheme
 import app.offlinerailwaymap.ui.SheetTab
 import kotlinx.coroutines.Dispatchers
@@ -274,6 +276,8 @@ fun MapScreen() {
                         Prefs.modeId = m.id
                     },
                     label = { Text(m.label) },
+                    // Unselected chips get a light fill so they stay readable over the map.
+                    colors = FilterChipDefaults.filterChipColors(containerColor = RailChipContainer),
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
@@ -310,7 +314,7 @@ fun MapScreen() {
             })
             Spacer(Modifier.height(12.dp))
             FloatingActionButton(onClick = { sheetTab = if (installed.isEmpty()) SheetTab.PACKS else SheetTab.KEY }) {
-                Icon(Icons.Default.Menu, contentDescription = "Country packs and map options")
+                Icon(Icons.Default.Menu, contentDescription = "Key, map settings and countries")
             }
         }
 
