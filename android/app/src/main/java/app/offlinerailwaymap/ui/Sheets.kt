@@ -54,7 +54,7 @@ fun formatBytes(bytes: Long): String = when {
     else -> "%.0f kB".format(bytes / 1e3)
 }
 
-enum class SheetTab(val label: String) { KEY("Key"), PACKS("Country packs"), OPTIONS("Map options"), ABOUT("About") }
+enum class SheetTab(val label: String) { KEY("Key"), OPTIONS("Map settings"), PACKS("Countries"), ABOUT("About") }
 
 /** The single bottom sheet behind the menu button: key, country packs, map options and about. */
 @OptIn(ExperimentalMaterial3Api::class)

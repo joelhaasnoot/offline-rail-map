@@ -36,6 +36,7 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
 | `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
+| `pipeline/composed_image_golden.mjs` | Reference layouts of composed signal icons, from the website's code, for the app's tests |
 
 ## Building packs
 
@@ -71,6 +72,7 @@ style assets after upstream style changes with:
 cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json
 martin --sprite ./symbols --listen-addresses 127.0.0.1:3999 &   # then fetch /sprite/symbols*.json|png and /sdf_sprite/... into pipeline/work/sprites/
 python3 ../../prepare_style.py
+cd ../../.. && node pipeline/composed_image_golden.mjs   # refresh the composed icon test data
 ```
 
 Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), which the app uses to
@@ -94,7 +96,7 @@ pipeline/build-world.sh
 cd android && ./gradlew :app:assembleDebug
 ```
 
-Unit tests (pack coverage and manifest parsing):
+Unit tests (pack coverage, manifest parsing, the key and composed icons):
 
 ```bash
 cd android && ./gradlew :app:testDebugUnitTest
@@ -111,6 +113,17 @@ The Key tab explains the colours and symbols of the current view, using OpenRail
 definitions (`legend.json`, copied by `pipeline/prepare_style.py`). Each row is drawn by MapLibre
 from sample features styled with the same layers as the map, so the key always matches it. By default
 it lists only what is on screen; "Everything" lists the whole view.
+
+## Composed signal icons
+
+Some signal icons the style asks for are not in the sprite: stacks such as
+`fi/t-270|fi/t-271-top-{1}` and positioned parts such as `it/avviso-1v|it/1v-G|it/avviso@bottom`.
+The website draws them at runtime (`generateImage` in `proxy/js/ui.js`); the app ports that code.
+`ComposedImage` parses the ids and lays the parts out exactly as the website does (checked against
+the website's own code by `ComposedImageTest`), and `SpriteComposer` draws the normal and SDF
+variants from the sprite sheet, for both the map and the key. MapLibre Native needs a missing image
+before its callback returns, so at startup the app decodes, in the background, the sprite icons that
+the composed icons in `legend.json` are made of; composing one then takes a few milliseconds.
 
 ## How the style switching works
 

@@ -12,6 +12,9 @@ val RailOrangeDark = Color(0xFF9A3E00)
 val RailOrangeContainer = Color(0xFFFFDCC4)
 val LocationBlue = Color(0xFF1A73E8)
 
+/** Fill of unselected chips floating over the map: a warm off-white, slightly see-through. */
+val RailChipContainer = Color(0xEBFFF4EB)
+
 val RailColorScheme = lightColorScheme(
     primary = RailOrange,
     onPrimary = Color.White,
