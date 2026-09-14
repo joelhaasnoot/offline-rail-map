@@ -35,6 +35,7 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
 | `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
+| `pipeline/build-sprites.sh` | Renders the sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
 | `pipeline/composed_image_golden.mjs` | Reference layouts of composed signal icons, from the website's code, for the app's tests |
 
@@ -69,11 +70,17 @@ The first run clones `hiddewie/OpenRailwayMap-vector` into `pipeline/work/`. Reg
 style assets after upstream style changes with:
 
 ```bash
-cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json
-martin --sprite ./symbols --listen-addresses 127.0.0.1:3999 &   # then fetch /sprite/symbols*.json|png and /sdf_sprite/... into pipeline/work/sprites/
-python3 ../../prepare_style.py
-cd ../../.. && node pipeline/composed_image_golden.mjs   # refresh the composed icon test data
+cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json && cd ../../..
+pipeline/build-sprites.sh                      # sprite sheets, then prepare_style.py
+node pipeline/composed_image_golden.mjs        # refresh the composed icon test data
 ```
+
+`build-sprites.sh` renders upstream's symbols with this project's replacements from
+`pipeline/symbols/` on top. The only replacements so far are the "unknown signal" icons: a signal
+whose type is not tagged in OpenStreetMap is drawn as a signal head with a question-mark badge in the
+signal type's colour, instead of upstream's question-mark pentagon. Regenerate them with
+`pipeline/make_unknown_signal_icons.py head-badge pipeline/work/OpenRailwayMap-vector/symbols/general pipeline/symbols/general`
+(designs: `head`, `head-badge`, `lamp`).
 
 Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), which the app uses to
 tell "no data here yet" from "this area is in a pack you haven't downloaded" and to offer that

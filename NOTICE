@@ -17,7 +17,9 @@ OpenRailwayMap-vector (https://github.com/hiddewie/OpenRailwayMap-vector)
   Derived files in this repository:
     android/app/src/main/assets/style/orm-style.json   generated from proxy/js/styles.mjs and features/*.yaml,
                                                        then adapted for MapLibre Native by pipeline/prepare_style.py
-    android/app/src/main/assets/sprites/symbols*.json  sprite sheets rendered from the symbols/ directory
+    android/app/src/main/assets/sprites/symbols*.json  sprite sheets rendered from the symbols/ directory, with the
+                                                       "unknown signal" icons replaced by pipeline/symbols/general
+                                                       (drawn for this project, reusing upstream's question-mark glyph)
     android/app/src/main/assets/sprites/symbols*.png
     android/app/src/main/assets/font/OpenRailwayMap-*  glyph files copied from proxy/font
   Used at build time (not included here): the import (osm2pgsql Lua, SQL), Martin
