@@ -4,12 +4,17 @@
 package app.offlinerailwaymap.data
 
 import android.content.Context
+import android.text.format.Formatter
 import android.util.Log
 import app.offlinerailwaymap.BuildConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -23,13 +28,21 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Keeps track of which country packs are installed on the device, fetches the remote
- * manifest, and downloads / deletes packs. A pack lives in `filesDir/packs/<id>/` and is
- * considered installed once `pack.json` exists there (written last, after all files).
+ * manifest, and downloads, updates and deletes packs. Folder layout: see [PackDirs]. A download
+ * or update is written to a staging folder and only swapped in when complete, so the installed
+ * copy keeps working during an update and survives a failed or cancelled one.
  */
 object PackStore {
     private const val TAG = "PackStore"
 
     private lateinit var packsDir: File
+    private lateinit var appContext: Context
+
+    /** Extra free space required beyond the pack itself. */
+    private const val SPACE_MARGIN_BYTES = 64L * 1024 * 1024
+
+    /** How long a replaced copy is kept so the map can finish switching to the new files. */
+    private const val REPLACED_COPY_GRACE_MS = 60_000L
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val http = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -56,12 +69,15 @@ object PackStore {
         private set
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         packsDir = File(context.filesDir, "packs").also { it.mkdirs() }
-        scanInstalled()
+        // Downloads interrupted by the app being killed are not resumed; drop their leftovers.
+        packsDir.listFiles()?.filter { it.isDirectory && PackDirs.isStaging(it.name) }?.forEach { it.deleteRecursively() }
+        scanInstalled(deleteSuperseded = true)
     }
 
-    private fun scanInstalled() {
-        val packs = packsDir.listFiles()?.filter { it.isDirectory }?.mapNotNull { dir ->
+    private fun scanInstalled(deleteSuperseded: Boolean) {
+        val copies = packsDir.listFiles()?.filter { it.isDirectory && !PackDirs.isStaging(it.name) }?.mapNotNull { dir ->
             val meta = File(dir, "pack.json")
             if (!meta.isFile) {
                 return@mapNotNull null
@@ -74,8 +90,12 @@ object PackStore {
                 Log.w(TAG, "ignoring broken pack in $dir", e)
                 null
             }
-        }.orEmpty().sortedBy { it.info.name }
-        _installed.value = packs
+        }.orEmpty()
+        val (chosen, superseded) = PackDirs.choose(copies, { it.info.id }, { it.info.version }, { it.dir.name })
+        _installed.value = chosen.sortedBy { it.info.name }
+        if (deleteSuperseded) {
+            superseded.forEach { it.dir.deleteRecursively() }
+        }
     }
 
     fun refreshManifest(url: String = manifestUrl) {
@@ -114,50 +134,80 @@ object PackStore {
             }
         }
         if (changed) {
-            scanInstalled()
+            scanInstalled(deleteSuperseded = false)
         }
     }
 
     fun isInstalled(id: String): InstalledPack? = _installed.value.firstOrNull { it.info.id == id }
 
+    /** Downloads [pack], or updates it when an older copy is installed. */
     fun download(pack: PackInfo) {
         if (jobs[pack.id]?.isActive == true) {
             return
         }
+        _downloads.update { it - pack.id }
         jobs[pack.id] = scope.launch {
-            val dir = File(packsDir, pack.id).also { it.mkdirs() }
-            File(dir, "pack.json").delete()
+            val staging = File(packsDir, PackDirs.stagingName(pack.id, System.currentTimeMillis()))
             try {
+                val needed = pack.totalBytes + SPACE_MARGIN_BYTES
+                val free = packsDir.usableSpace
+                if (free < needed) {
+                    throw IOException(
+                        "not enough free space: needs ${Formatter.formatShortFileSize(appContext, needed)}, " +
+                            "${Formatter.formatShortFileSize(appContext, free)} available",
+                    )
+                }
+                if (!staging.mkdirs()) {
+                    throw IOException("could not create ${staging.name}")
+                }
                 var done = 0L
                 val total = pack.totalBytes
                 setProgress(pack.id, DownloadState.Running(0, total, "railway"))
-                done += downloadFile(pack.railwayUrl, File(dir, "railway.pmtiles")) { d ->
+                done += downloadFile(pack.railwayUrl, File(staging, "railway.pmtiles")) { d ->
                     setProgress(pack.id, DownloadState.Running(done + d, total, "railway"))
                 }
                 if (pack.basemapUrl != null) {
-                    done += downloadFile(pack.basemapUrl, File(dir, "basemap.pmtiles")) { d ->
+                    done += downloadFile(pack.basemapUrl, File(staging, "basemap.pmtiles")) { d ->
                         setProgress(pack.id, DownloadState.Running(done + d, total, "basemap"))
                     }
                 }
-                File(dir, "pack.json").writeText(pack.toJson().toString())
+                File(staging, "pack.json").writeText(pack.toJson().toString())
+                val installed = File(packsDir, PackDirs.installedName(staging.name))
+                if (!staging.renameTo(installed)) {
+                    throw IOException("could not move ${staging.name} into place")
+                }
+                val replaced = _installed.value.filter { it.info.id == pack.id }
                 _downloads.update { it - pack.id }
-                scanInstalled()
+                scanInstalled(deleteSuperseded = false)
+                if (replaced.isNotEmpty()) {
+                    // The map keeps reading the previous files until it has switched to the new copy.
+                    scope.launch {
+                        delay(REPLACED_COPY_GRACE_MS)
+                        replaced.forEach { it.dir.deleteRecursively() }
+                    }
+                }
+            } catch (e: CancellationException) {
+                staging.deleteRecursively()
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "download of ${pack.id} failed", e)
+                staging.deleteRecursively()
                 setProgress(pack.id, DownloadState.Failed(e.message ?: e.toString()))
             }
         }
     }
 
+    /** Stops a running download or update. An installed copy is left untouched. */
     fun cancel(id: String) {
         jobs.remove(id)?.cancel()
         _downloads.update { it - id }
-        File(packsDir, id).deleteRecursively()
-        scanInstalled()
     }
 
+    /** Removes a pack from the device, including any download of it that is in progress. */
     fun delete(id: String) {
         cancel(id)
+        packsDir.listFiles()?.filter { PackDirs.belongsTo(it.name, id) }?.forEach { it.deleteRecursively() }
+        scanInstalled(deleteSuperseded = false)
     }
 
     fun dismissError(id: String) {
@@ -169,7 +219,7 @@ object PackStore {
     }
 
     /** Streams [url] into [target] via a temporary file; returns the number of bytes written. */
-    private fun downloadFile(url: String, target: File, onProgress: (Long) -> Unit): Long {
+    private suspend fun downloadFile(url: String, target: File, onProgress: (Long) -> Unit): Long {
         val tmp = File(target.path + ".part")
         val resp = http.newCall(Request.Builder().url(url).build()).execute()
         resp.use {
@@ -182,6 +232,7 @@ object PackStore {
                 tmp.outputStream().buffered(1 shl 16).use { out ->
                     val buf = ByteArray(1 shl 16)
                     while (true) {
+                        currentCoroutineContext().ensureActive() // stop promptly when cancelled
                         val n = input.read(buf)
                         if (n < 0) {
                             break

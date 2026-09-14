@@ -150,17 +150,20 @@ private fun PacksContent(onShowPack: (InstalledPack) -> Unit) {
 
 @Composable
 private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadState?, onShow: (InstalledPack) -> Unit) {
+    val updateAvailable = installed != null && installed.info.version < pack.version
+    // Describe what is on the device; the update line below describes the newer version.
+    val shown = installed?.info ?: pack
     Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(pack.name, style = MaterialTheme.typography.titleMedium)
                 val details = buildString {
-                    append(pack.regionLabel)
+                    append(shown.regionLabel)
                     append(" · ")
-                    append(formatBytes(pack.totalBytes))
-                    if (pack.dataDate.isNotEmpty()) {
+                    append(formatBytes(shown.totalBytes))
+                    if (shown.dataDate.isNotEmpty()) {
                         append(" · data ")
-                        append(pack.dataDate.take(10))
+                        append(shown.dataDate.take(10))
                     }
                 }
                 Text(details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -179,7 +182,8 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { state.fraction }, modifier = Modifier.fillMaxWidth())
                 Text(
-                    "${state.stage}: ${formatBytes(state.bytesDone)} of ${formatBytes(state.bytesTotal)}",
+                    (if (installed != null) "Updating " else "") +
+                        "${state.stage}: ${formatBytes(state.bytesDone)} of ${formatBytes(state.bytesTotal)}",
                     style = MaterialTheme.typography.labelSmall,
                 )
             }
@@ -187,7 +191,7 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Failed: ${state.message}",
+                        (if (installed != null) "Update failed: " else "Failed: ") + state.message,
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
@@ -197,8 +201,26 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
             }
             null -> {}
         }
-        if (installed != null && installed.info.version < pack.version) {
-            Text("Update available", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        if (updateAvailable && state !is DownloadState.Running) {
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val newer = buildString {
+                    append("Update available")
+                    if (pack.dataDate.isNotEmpty()) {
+                        append(": data ")
+                        append(pack.dataDate.take(10))
+                    }
+                    append(" · ")
+                    append(formatBytes(pack.totalBytes))
+                }
+                Text(
+                    newer,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = { PackStore.download(pack) }) { Text("Update") }
+            }
         }
     }
 }
