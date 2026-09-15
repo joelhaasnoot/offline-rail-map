@@ -84,7 +84,7 @@ fun CoverageBanner(coverage: Coverage.Missing, downloadState: DownloadState?, on
                 Text("${pack.name} isn't downloaded yet", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Download the ${pack.name} pack (${formatBytes(pack.totalBytes)}) to see its railway infrastructure offline.",
+                    "Download the ${pack.name} pack (${formatBytes(pack.totalBytes)}) to see it offline.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(8.dp))
@@ -113,7 +113,7 @@ fun CoverageBanner(coverage: Coverage.Missing, downloadState: DownloadState?, on
                         }
                     }
                     null -> Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-                        TextButton(onClick = onOpenPacks) { Text("All packs") }
+                        TextButton(onClick = onOpenPacks) { Text("All countries") }
                         Button(onClick = { PackStore.download(pack) }) { Text("Download") }
                     }
                 }
