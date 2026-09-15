@@ -38,81 +38,20 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `pipeline/build-sprites.sh` | Renders the sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
 | `pipeline/composed_image_golden.mjs` | Reference layouts of composed signal icons, from the website's code, for the app's tests |
+| `scripts/package-android-release.sh` | Packages a signed Android release (see `INSTALL.md`) |
+| `INSTALL.md` | How to build the packs, the world overview and the app, and package a release |
 
-## Building packs
+## Building
 
-Requirements on the build machine: Docker, `osmium`, `martin`, `pmtiles`, `psql`, Python 3 with
-Pillow and Java 21 (for Planetiler). Node.js is only needed to regenerate the app's style assets.
-
-```bash
-pipeline/build-country.sh netherlands                      # railway + basemap pack
-pipeline/build-country.sh belgium --no-basemap             # railway only
-pipeline/build-country.sh germany --basemap-maxzoom 13     # more basemap detail (about 2.5x larger)
-pipeline/make_manifest.py pipeline/out --base-url https://packs.example.com
-```
-
-Railway tiles go to zoom 16. Basemaps stop at zoom 12 by default: compared side by side with zoom 13
-they look nearly identical, at 40% of the size (Netherlands: 54 MB instead of 142 MB).
-
-To rebuild every pack that is in the current manifest (smallest first, refreshing the manifest after
-each pack, failures logged to `pipeline/work/logs/` and skipped):
-
-```bash
-pipeline/build-all.sh                          # packs listed in pipeline/out/manifest.json
-pipeline/build-all.sh --only belgium,france    # a subset
-pipeline/build-all.sh --dry-run                # show the plan without building
-```
-
-Upload `pipeline/out/` to any static host (S3/R2/GitHub Releases/a web server) and point the app
-at `<base-url>/manifest.json`.
-
-The first run clones `hiddewie/OpenRailwayMap-vector` into `pipeline/work/`. Regenerate the app's
-style assets after upstream style changes with:
-
-```bash
-cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json && cd ../../..
-pipeline/build-sprites.sh                      # sprite sheets, then prepare_style.py
-node pipeline/composed_image_golden.mjs        # refresh the composed icon test data
-```
-
-`build-sprites.sh` renders upstream's symbols with this project's replacements from
-`pipeline/symbols/` on top. The only replacements so far are the "unknown signal" icons: a signal
-whose type is not tagged in OpenStreetMap is drawn as a signal head with a question-mark badge in the
-signal type's colour, instead of upstream's question-mark pentagon. Regenerate them with
-`pipeline/make_unknown_signal_icons.py head-badge pipeline/work/OpenRailwayMap-vector/symbols/general pipeline/symbols/general`
-(designs: `head`, `head-badge`, `lamp`).
-
-Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), which the app uses to
-tell "no data here yet" from "this area is in a pack you haven't downloaded" and to offer that
-download directly on the map.
+See [INSTALL.md](INSTALL.md) for building the country packs, the world overview and the Android app,
+and for packaging a release.
 
 ## World overview
 
 The app ships a small world map (zoom 0–4, about 3 MB) so it is never blank: coastlines, borders
 and glaciers from Natural Earth, with continent, country, state, city and sea labels from
 OpenStreetMap. Inside a downloaded country the detailed pack takes over; the app masks the pack's
-region outline so the coarse world coastline never shows through. Rebuild it with:
-
-```bash
-pipeline/build-world.sh
-```
-
-## Building the app
-
-```bash
-cd android && ./gradlew :app:assembleDebug
-```
-
-Unit tests (pack coverage, manifest parsing, the key and composed icons):
-
-```bash
-cd android && ./gradlew :app:testDebugUnitTest
-```
-
-By default the app reads the published packs from `https://data.offlinerailmap.com/manifest.json`.
-To test packs built locally, serve them with `cd pipeline/out && python3 -m http.server 8765` and
-build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
-Android emulator).
+region outline so the coarse world coastline never shows through.
 
 ## Map key
 
