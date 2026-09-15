@@ -114,6 +114,30 @@ To test packs built locally, serve them with `cd pipeline/out && python3 -m http
 build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
 Android emulator).
 
+### Packaging a release
+
+```bash
+scripts/package-android-release.sh
+```
+
+This runs the unit tests, builds the Play bundle and an installable APK, checks both are signed and
+read their packs over https, and writes `android/dist/offline-rail-map-<version>.aab` and `.apk`. It
+refuses to package uncommitted changes in `android/` (override with `--allow-dirty`). Bump
+`versionCode` and `versionName` in `android/app/build.gradle.kts` first.
+
+The upload key lives in 1Password (item "Offline Rail Map Android upload key": the keystore as
+`keystore`, its password and a `key alias` field); the script reads it with the `op` CLI into a
+temporary folder that is removed afterwards. Point `RELEASE_1PASSWORD_ITEM` at another item if
+needed, or skip 1Password with `android/keystore.properties` (gitignored) or the `RELEASE_STORE_FILE`,
+`RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` environment variables:
+
+```properties
+storeFile=/path/to/upload.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
 ## Map key
 
 The Key tab explains the colours and symbols of the current view, using OpenRailwayMap's own legend
