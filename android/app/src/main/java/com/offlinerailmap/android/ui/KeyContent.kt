@@ -81,10 +81,6 @@ fun KeyContent(mode: MapMode, options: MapOptions, legendContext: LegendContext?
     }
 
     Column(Modifier.padding(horizontal = 16.dp)) {
-        Text(
-            "What the colours and symbols mean in the ${mode.label} view at zoom $zoom.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
         Row {
             FilterChip(selected = !showAll, onClick = { showAll = false }, label = { Text("On screen") })
             Spacer(Modifier.width(8.dp))
@@ -97,9 +93,9 @@ fun KeyContent(mode: MapMode, options: MapOptions, legendContext: LegendContext?
             }
             current.entries.isEmpty() -> Text(
                 if (showAll) {
-                    "This view has nothing to explain at this zoom level."
+                    "Currently nothing to explain"
                 } else {
-                    "Nothing on screen needs explaining. Move the map to railway lines, or choose Everything."
+                    "Move the map to railway lines, or choose Everything."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
