@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "app.offlinerailwaymap"
+    namespace = "com.offlinerailmap.android"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "app.offlinerailwaymap"
+        applicationId = "com.offlinerailmap.android"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
