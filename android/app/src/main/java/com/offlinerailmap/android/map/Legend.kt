@@ -59,7 +59,9 @@ object Legend {
         layer.optDouble("minzoom", MIN_ZOOM.toDouble()) <= zoom && zoom < layer.optDouble("maxzoom", MAX_ZOOM + 1.0)
 
     /**
-     * The key entries for the layers visible at [zoom], in style order.
+     * The key entries for the layers visible at [zoom]: symbols (points and areas) first, then lines,
+     * each group in style order. Symbols come first because the on-screen filter can tell them apart,
+     * while many line entries share one key and are listed whenever any line is on screen.
      *
      * @param legendView the legend.json object for the current view (`{countries, sourceLayers}`)
      * @param state resolved global state (map options), for entries that depend on them
@@ -74,7 +76,8 @@ object Legend {
     ): List<Entry> {
         val sourceLayers = legendView.optJSONObject("sourceLayers") ?: JSONObject()
         val done = HashSet<String>()
-        val result = ArrayList<Entry>()
+        val symbols = ArrayList<Pair<JSONObject, String>>()
+        val lines = ArrayList<Pair<JSONObject, String>>()
         for (layer in layers) {
             val name = sourceName(layer)
             if (name in done || !visibleAtZoom(layer, zoom)) {
@@ -87,13 +90,19 @@ object Legend {
                 if (!visibleAtZoom(item, zoom) || !stateMatches(item, state) || !inViewMatches(item, name, inView)) {
                     continue
                 }
-                val row = result.size
-                val variants = expandVariants(item).filter { stateMatches(it, state) }
-                val features = variants.mapIndexed { index, variant -> placeFeature(variant, index, variants.size, row) }
-                result.add(Entry(label(item, state), name, features))
+                if (item.optString("type") == "line") {
+                    lines.add(item to name)
+                } else {
+                    symbols.add(item to name)
+                }
             }
         }
-        return result
+        // Rows are numbered in display order: the sample geometry of each entry sits in its own row.
+        return (symbols + lines).mapIndexed { row, (item, name) ->
+            val variants = expandVariants(item).filter { stateMatches(it, state) }
+            val features = variants.mapIndexed { index, variant -> placeFeature(variant, index, variants.size, row) }
+            Entry(label(item, state), name, features)
+        }
     }
 
     private fun stateMatches(item: JSONObject, state: Map<String, Any?>): Boolean {

@@ -81,9 +81,17 @@ class LegendTest {
 
         val zoomedIn = Legend.entries(legendView, listOf(lines, signals), gaugeState, zoom = 14, inView = null)
         assertEquals(
-            listOf("Main line", "Standard gauge", "Siding", "Ferry", "(DE) Distant signal, with repeater"),
+            listOf("(DE) Distant signal, with repeater", "Main line", "Standard gauge", "Siding", "Ferry"),
             zoomedIn.map { it.label },
         )
+    }
+
+    @Test
+    fun symbolsComeBeforeLines() {
+        // Style order puts the lines first; the key lists the signal above them anyway.
+        val entries = Legend.entries(legendView, listOf(lines, signals), gaugeState, 14, null)
+        assertEquals("openrailwaymap_signals-signals_railway_signals", entries.first().sourceName)
+        assertEquals(setOf("high-railway_line_high"), entries.drop(1).map { it.sourceName }.toSet())
     }
 
     @Test
@@ -110,24 +118,26 @@ class LegendTest {
     @Test
     fun samplesArePlacedInTheirRowAndVariantsShareIt() {
         val entries = Legend.entries(legendView, listOf(lines, signals), gaugeState, 14, null)
-        val main = entries[0].features.single().getJSONObject("geometry")
-        assertEquals("LineString", main.getString("type"))
-        val coords = main.getJSONArray("coordinates")
-        assertEquals(Legend.degrees(-2.5), coords.getJSONArray(0).getDouble(0), 1e-12)
-        assertEquals(Legend.degrees(-1.0), coords.getJSONArray(1).getDouble(0), 1e-12)
-        assertEquals(0.0, coords.getJSONArray(0).getDouble(1), 1e-12)
-
-        val signal = entries[4]
+        val signal = entries[0]
         assertEquals(2, signal.features.size)
-        val y = Legend.degrees(-4 * Legend.ROW_SPACING)
         val first = signal.features[0].getJSONObject("geometry").getJSONArray("coordinates")
         val second = signal.features[1].getJSONObject("geometry").getJSONArray("coordinates")
-        assertEquals(y, first.getDouble(1), 1e-12)
+        assertEquals(0.0, first.getDouble(1), 1e-12)
         assertEquals(Legend.degrees(-2.125), first.getDouble(0), 1e-12)
         assertEquals(Legend.degrees(-1.375), second.getDouble(0), 1e-12)
         assertEquals("de/vr0-repeater", signal.features[1].getJSONObject("properties").getString("feature0"))
         assertEquals("signal", signal.features[1].getJSONObject("properties").getString("railway"))
-        assertEquals(y to Legend.degrees(Legend.ROW_CENTER_X), Legend.rowCenter(4))
+
+        val siding = entries[3]
+        assertEquals("Siding", siding.label)
+        val geometry = siding.features.single().getJSONObject("geometry")
+        assertEquals("LineString", geometry.getString("type"))
+        val coords = geometry.getJSONArray("coordinates")
+        val y = Legend.degrees(-3 * Legend.ROW_SPACING)
+        assertEquals(Legend.degrees(-2.5), coords.getJSONArray(0).getDouble(0), 1e-12)
+        assertEquals(Legend.degrees(-1.0), coords.getJSONArray(1).getDouble(0), 1e-12)
+        assertEquals(y, coords.getJSONArray(0).getDouble(1), 1e-12)
+        assertEquals(y to Legend.degrees(Legend.ROW_CENTER_X), Legend.rowCenter(3))
     }
 
     @Test
