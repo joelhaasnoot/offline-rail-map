@@ -42,7 +42,7 @@ struct LegendContext: Hashable {
 @MainActor
 @Observable
 final class AppModel {
-    private static let log = Logger(subsystem: "app.offlinerailwaymap", category: "AppModel")
+    private static let log = Logger(subsystem: "com.offlinerailmap.ios", category: "AppModel")
 
     let prefs = Prefs()
     let packs: PackStore

@@ -42,7 +42,7 @@ struct AboutContent: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Offline Railway Map")
+                Text("Offline Rail Map")
                     .font(.title2.bold())
                 Text("Version \(version)")
                     .font(.footnote)

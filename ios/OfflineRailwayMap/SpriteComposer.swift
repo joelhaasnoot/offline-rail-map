@@ -16,7 +16,7 @@ import UIKit
  keeps only the icons composed icons are made of and lets the sheet go.
  */
 final class SpriteComposer: @unchecked Sendable {
-    private static let log = Logger(subsystem: "app.offlinerailwaymap", category: "SpriteComposer")
+    private static let log = Logger(subsystem: "com.offlinerailmap.ios", category: "SpriteComposer")
 
     private let assets: MapAssets
     private let suffix: String

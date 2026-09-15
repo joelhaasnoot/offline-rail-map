@@ -61,7 +61,7 @@ public struct MapAssets: Sendable {
  `WorldLayers`). Thread-safe; building is meant to run off the main thread.
  */
 public final class StyleBuilder: @unchecked Sendable {
-    private static let log = Logger(subsystem: "app.offlinerailwaymap", category: "StyleBuilder")
+    private static let log = Logger(subsystem: "com.offlinerailmap.ios", category: "StyleBuilder")
 
     public let assets: MapAssets
     private let lock = NSLock()
