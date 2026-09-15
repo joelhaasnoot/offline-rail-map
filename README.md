@@ -1,6 +1,6 @@
 # Offline Rail Map
 
-An Android app that shows the [OpenRailwayMap](https://openrailwaymap.app) cartography fully
+An Android and iPhone app that shows the [OpenRailwayMap](https://openrailwaymap.app) cartography fully
 offline: infrastructure, speed, train protection (signalling), electrification, gauge and operator
 views, exactly like the web app, rendered from country packs you download once.
 
@@ -18,7 +18,7 @@ OpenRailwayMap-vector import  (osm2pgsql + PostGIS, docker)
 pipeline/bake_tiles.py  → railway.pmtiles   (all layers, z0–16, ~40 MB for the Netherlands)
 planetiler              → basemap.pmtiles   (slim OpenMapTiles basemap, z0–12, ~55 MB for NL)
    ▼
-manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files)
+manifest.json  ──▶  Android and iOS apps (MapLibre Native, PMTiles from local files)
 ```
 
 ## Repository layout
@@ -29,7 +29,8 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `android/app/src/main/assets/style/orm-style.json` | Generated OpenRailwayMap style (see `pipeline/prepare_style.py`) |
 | `android/app/src/main/assets/style/basemap-style.json` | Hand-written light basemap style for the OpenMapTiles schema |
 | `android/app/src/main/assets/sprites`, `assets/font` | Generated OpenRailwayMap symbols and glyphs |
-| `ios/` | (planned) iOS app |
+| `ios/` | iOS app (Swift, SwiftUI, MapLibre Native iOS 6); `ios/OfflineRailwayMap.xcodeproj`, reads its style, legend, sprites, glyphs and world map from the Android assets folder |
+| `ios/RailwayMapCore` | Swift package with everything that needs no UIKit: style building, packs and downloads, map key, coverage (`swift test`) |
 | `pipeline/build-country.sh` | End-to-end pack build for one Geofabrik region |
 | `pipeline/build-all.sh` | Rebuilds every pack listed in a manifest and refreshes the manifest |
 | `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
@@ -114,6 +115,29 @@ To test packs built locally, serve them with `cd pipeline/out && python3 -m http
 build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
 Android emulator).
 
+## Building the iOS app
+
+Open `ios/OfflineRailwayMap.xcodeproj` in Xcode 16 or later and run the `OfflineRailwayMap` scheme
+(iOS 17+). Xcode fetches MapLibre Native through Swift Package Manager. From the command line:
+
+```bash
+xcodebuild -project ios/OfflineRailwayMap.xcodeproj -scheme OfflineRailwayMap -destination 'generic/platform=iOS Simulator' build
+```
+
+The app bundles `android/app/src/main/assets` as a folder, so both apps always ship the same style,
+legend, sprites, glyphs and world map. Stacked and positioned signal icons that are not in the sprite
+are composed at runtime as on Android (`ComposedImage` in `RailwayMapCore`, drawn by `SpriteComposer`),
+checked against the same golden layouts. Unit tests for the style builder, packs, key and coverage live
+in the `RailwayMapCore` package:
+
+```bash
+swift test --package-path ios/RailwayMapCore
+```
+
+To test packs built locally, serve them as above and set the `MANIFEST_URL` build setting to
+`http://localhost:8765/manifest.json` (the simulator shares the Mac's network). Packs are stored in
+Application Support and excluded from device backups; `geo:` links open the map at that location.
+
 ## Map key
 
 The Key tab explains the colours and symbols of the current view, using OpenRailwayMap's own legend
@@ -152,7 +176,7 @@ which project and what they contain:
   © Alexander Matheisen): the generated map style, sprite sheets and OpenRailwayMap glyphs, and the
   import/tile pipeline this project drives.
 - Fira Code (SIL Open Font License 1.1): the FiraCode glyphs.
-- Everything else (Android app code, basemap style, pipeline scripts) was written for this project
+- Everything else (Android and iOS app code, basemap style, pipeline scripts) was written for this project
   and is released under the same GPL-3.0-or-later.
 
 Map data © OpenStreetMap contributors (ODbL). Basemap tiles are produced with Planetiler
