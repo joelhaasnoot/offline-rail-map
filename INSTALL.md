@@ -1,7 +1,7 @@
 # Building Offline Rail Map
 
-How to build the country packs, the bundled world overview and the Android app, and how to package a
-release. See the [README](README.md) for what the project is and how it works.
+How to build the country packs, the bundled world overview and the Android and iOS apps, and how to
+package an Android release. See the [README](README.md) for what the project is and how it works.
 
 ## Country packs
 
@@ -75,7 +75,30 @@ To test packs built locally, serve them with `cd pipeline/out && python3 -m http
 build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
 Android emulator).
 
-## Packaging a release
+## iOS app
+
+Open `ios/OfflineRailwayMap.xcodeproj` in Xcode 16 or later and run the `OfflineRailwayMap` scheme
+(iOS 17+). Xcode fetches MapLibre Native through Swift Package Manager. From the command line:
+
+```bash
+xcodebuild -project ios/OfflineRailwayMap.xcodeproj -scheme OfflineRailwayMap -destination 'generic/platform=iOS Simulator' build
+```
+
+The app bundles `android/app/src/main/assets` as a folder, so both apps always ship the same style,
+legend, sprites, glyphs and world map. Stacked and positioned signal icons that are not in the sprite
+are composed at runtime as on Android (`ComposedImage` in `RailwayMapCore`, drawn by `SpriteComposer`),
+checked against the same golden layouts. Unit tests for the style builder, packs, key and coverage live
+in the `RailwayMapCore` package:
+
+```bash
+swift test --package-path ios/RailwayMapCore
+```
+
+To test packs built locally, serve them as described under Android app and set the `MANIFEST_URL` build setting to
+`http://localhost:8765/manifest.json` (the simulator shares the Mac's network). Packs are stored in
+Application Support and excluded from device backups; `geo:` links open the map at that location.
+
+## Packaging an Android release
 
 ```bash
 scripts/package-android-release.sh
