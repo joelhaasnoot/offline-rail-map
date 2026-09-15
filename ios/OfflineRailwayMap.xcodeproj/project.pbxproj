@@ -211,7 +211,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Railway Map";
+				INFOPLIST_KEY_CFBundleDisplayName = "Rail Map";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location is shown on the map. It is used on this device only and never sent anywhere.";
@@ -225,7 +225,7 @@
 				);
 				MANIFEST_URL = "https://data.offlinerailmap.com/manifest.json";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = app.offlinerailwaymap;
+				PRODUCT_BUNDLE_IDENTIFIER = com.offlinerailmap.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -248,7 +248,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Railway Map";
+				INFOPLIST_KEY_CFBundleDisplayName = "Rail Map";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location is shown on the map. It is used on this device only and never sent anywhere.";
@@ -262,7 +262,7 @@
 				);
 				MANIFEST_URL = "https://data.offlinerailmap.com/manifest.json";
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = app.offlinerailwaymap;
+				PRODUCT_BUNDLE_IDENTIFIER = com.offlinerailmap.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

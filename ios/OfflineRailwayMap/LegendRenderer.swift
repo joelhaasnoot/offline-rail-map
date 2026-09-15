@@ -12,7 +12,7 @@ import UIKit
  */
 @MainActor
 final class LegendRenderer {
-    private static let log = Logger(subsystem: "app.offlinerailwaymap", category: "LegendRenderer")
+    private static let log = Logger(subsystem: "com.offlinerailmap.ios", category: "LegendRenderer")
     private static let snapshotTimeout: Duration = .seconds(8)
 
     static let size = CGSize(
