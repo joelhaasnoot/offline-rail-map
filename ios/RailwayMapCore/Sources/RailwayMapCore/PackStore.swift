@@ -14,7 +14,7 @@ import os
 @MainActor
 @Observable
 public final class PackStore {
-    private static let log = Logger(subsystem: "app.offlinerailwaymap", category: "PackStore")
+    private static let log = Logger(subsystem: "com.offlinerailmap.ios", category: "PackStore")
 
     /// Extra free space required beyond the pack itself.
     private static let spaceMarginBytes: Int64 = 64 * 1024 * 1024
