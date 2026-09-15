@@ -1,4 +1,4 @@
-# Offline Railway Map
+# Offline Rail Map
 
 An Android app that shows the [OpenRailwayMap](https://openrailwaymap.app) cartography fully
 offline: infrastructure, speed, train protection (signalling), electrification, gauge and operator
