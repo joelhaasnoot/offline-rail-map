@@ -38,6 +38,8 @@ manifest.json  ──▶  Android app (MapLibre Native, PMTiles from local files
 | `pipeline/build-sprites.sh` | Renders the sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
 | `pipeline/composed_image_golden.mjs` | Reference layouts of composed signal icons, from the website's code, for the app's tests |
+| `pipeline/take_screenshots.sh`, `pipeline/make_store_assets.py` | Capture and frame the store screenshots, draw the store icon and feature graphic |
+| `fastlane/metadata/android/` | Store graphics for Google Play and F-Droid |
 | `scripts/package-android-release.sh` | Packages a signed Android release (see `INSTALL.md`) |
 | `INSTALL.md` | How to build the packs, the world overview and the app, and package a release |
 
