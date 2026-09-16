@@ -67,7 +67,7 @@ enum class MapMode(val id: String, val label: String, val globalState: Map<Strin
 /** User-configurable options that map onto upstream global-state keys. */
 data class MapOptions(
     val showConstruction: Boolean = true,
-    val showProposed: Boolean = true,
+    val showProposed: Boolean = false,
     val showAbandoned: Boolean = false,
     val showRazed: Boolean = false,
     /** voltageFrequency | maximumCurrent | power */
