@@ -22,3 +22,6 @@ pipeline/out/
 
 # Python
 __pycache__/
+
+# macOS
+.DS_Store
