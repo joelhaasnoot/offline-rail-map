@@ -98,3 +98,19 @@ storePassword=...
 keyAlias=upload
 keyPassword=...
 ```
+
+## Store graphics
+
+The app store icon, feature graphic and phone screenshots live in the fastlane layout under
+`fastlane/metadata/android/en-US/images/`, which Google Play tooling and F-Droid both read. The icon
+and feature graphic are drawn from the launcher icon's geometry (`pipeline/make_app_icon.py`), so they
+stay in step with it. To refresh them, start an emulator with the app and the Netherlands pack
+installed, then:
+
+```bash
+pipeline/take_screenshots.sh                   # raw 1080x1920 captures in pipeline/work/screenshots/phone
+pipeline/make_store_assets.py pipeline/work/screenshots/phone fastlane/metadata/android/en-US/images
+```
+
+`take_screenshots.sh` sets the display to 1080x1920 (Play rejects screenshots longer than 2:1) with a
+clean demo-mode status bar and restores it afterwards. Captions are in `make_store_assets.py`.

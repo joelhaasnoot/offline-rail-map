@@ -49,14 +49,20 @@ def vector(body):
             f'android:scaleX="{SCALE}" android:scaleY="{SCALE}">\n{body}    </group>\n</vector>\n')
 
 
-HEAD_BAR = rounded_bar(5, 0.55, 8, 16)
-TOP_LAMP = circle(9, 4.6, 2.25)
-BOTTOM_LAMP = circle(9, 12.5, 2.25)
+# Signal geometry in head units, shared with make_store_assets.py: bar (x, y, w, h), lamps (cx, cy, r).
+BAR = (5, 0.55, 8, 16)
+TOP = (9, 4.6, 2.25)
+BOTTOM = (9, 12.5, 2.25)
+GLOW_RADIUS = 3.05
+
+HEAD_BAR = rounded_bar(*BAR)
+TOP_LAMP = circle(*TOP)
+BOTTOM_LAMP = circle(*BOTTOM)
 
 FOREGROUND = vector(
     f'        <path android:fillColor="{DARK}" android:pathData="{HEAD_BAR}"/>\n'
     f'        <path android:fillColor="{UNLIT}" android:pathData="{TOP_LAMP}"/>\n'
-    f'        <path android:fillColor="{GLOW}" android:pathData="{circle(9, 12.5, 3.05)}"/>\n'
+    f'        <path android:fillColor="{GLOW}" android:pathData="{circle(BOTTOM[0], BOTTOM[1], GLOW_RADIUS)}"/>\n'
     f'        <path android:fillColor="{GREEN}" android:pathData="{BOTTOM_LAMP}"/>\n'
 )
 
