@@ -23,7 +23,7 @@ object Prefs {
         set(v) = prefs.edit().putBoolean("showConstruction", v).apply()
 
     var showProposed: Boolean
-        get() = prefs.getBoolean("showProposed", true)
+        get() = prefs.getBoolean("showProposed", false)
         set(v) = prefs.edit().putBoolean("showProposed", v).apply()
 
     var showAbandoned: Boolean
