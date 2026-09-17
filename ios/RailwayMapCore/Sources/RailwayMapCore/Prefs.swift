@@ -43,7 +43,7 @@ public final class Prefs: @unchecked Sendable {
     }
 
     public var showProposed: Bool {
-        get { bool("showProposed", true) }
+        get { bool("showProposed", false) }
         set { defaults.set(newValue, forKey: "showProposed") }
     }
 

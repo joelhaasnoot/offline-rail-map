@@ -16,7 +16,7 @@ struct CoverageBanner: View {
             if let pack = suggested {
                 Text("\(pack.name) isn't downloaded yet")
                     .font(.headline)
-                Text("Download the \(pack.name) pack (\(formatBytes(pack.totalBytes))) to see its railway infrastructure offline.")
+                Text("Download the \(pack.name) pack (\(formatBytes(pack.totalBytes))) to see it offline.")
                     .font(.subheadline)
                 switch downloadState {
                 case .running(let done, let total, let stage):
@@ -46,7 +46,7 @@ struct CoverageBanner: View {
                 case nil:
                     HStack {
                         Spacer()
-                        Button("All packs", action: onOpenPacks)
+                        Button("All countries", action: onOpenPacks)
                         Button("Download") {
                             packs.download(pack)
                         }

@@ -32,10 +32,8 @@ struct KeyContent: View {
 
     var body: some View {
         List {
-            if let context = model.legendContext {
+            if model.legendContext != nil {
                 Section {
-                    Text("What the colours and symbols mean in the \(model.mode.label) view at zoom \(context.zoom).")
-                        .font(.subheadline)
                     Picker("Show", selection: $showAll) {
                         Text("On screen").tag(false)
                         Text("Everything").tag(true)
@@ -47,8 +45,8 @@ struct KeyContent: View {
                 if let keyModel {
                     if keyModel.entries.isEmpty {
                         Text(showAll
-                            ? "This view has nothing to explain at this zoom level."
-                            : "Nothing on screen needs explaining. Move the map to railway lines, or choose Everything.")
+                            ? "Currently nothing to explain"
+                            : "Move the map to railway lines, or choose Everything.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 24)

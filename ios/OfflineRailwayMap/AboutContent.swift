@@ -19,26 +19,23 @@ private struct Credit: Identifiable {
 }
 
 private let credits = [
-    Credit(what: "Map data", who: "© OpenStreetMap contributors", license: "ODbL 1.0", url: "https://www.openstreetmap.org/copyright"),
+    Credit(what: "Map Data", who: "© OpenStreetMap contributors", license: "ODbL 1.0", url: "https://www.openstreetmap.org/copyright"),
     Credit(
-        what: "Railway map style, symbols and tile pipeline",
+        what: "Railway Map Style, Symbols and Tile Pipeline",
         who: "OpenRailwayMap",
         license: "GPL-3.0",
         url: "https://github.com/hiddewie/OpenRailwayMap-vector",
         note: "by Hidde Wieringa, with earlier styles by Michael Reichert and Alexander Matheisen"
     ),
-    Credit(what: "World overview", who: "Natural Earth", license: "public domain", url: "https://www.naturalearthdata.com"),
-    Credit(what: "Basemap schema", who: "OpenMapTiles", license: "BSD-3-Clause and CC-BY 4.0", url: "https://openmaptiles.org"),
-    Credit(what: "Map rendering", who: "MapLibre Native", license: "BSD-2-Clause", url: "https://maplibre.org"),
-    Credit(what: "Monospace font", who: "Fira Code", license: "SIL Open Font License 1.1", url: "https://github.com/tonsky/FiraCode"),
+    Credit(what: "World Overview", who: "Natural Earth", license: "public domain", url: "https://www.naturalearthdata.com"),
+    Credit(what: "Basemap Schema", who: "OpenMapTiles", license: "BSD-3-Clause and CC-BY 4.0", url: "https://openmaptiles.org"),
+    Credit(what: "Map Rendering", who: "MapLibre Native", license: "BSD-2-Clause", url: "https://maplibre.org"),
+    Credit(what: "Monospace Font", who: "Fira Code", license: "SIL Open Font License 1.1", url: "https://github.com/tonsky/FiraCode"),
 ]
 
 struct AboutContent: View {
-    let manifestURL: URL
-
     var body: some View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        let dataHost = manifestURL.host ?? manifestURL.absoluteString
 
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
@@ -47,16 +44,11 @@ struct AboutContent: View {
                 Text("Version \(version)")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Text("Railway infrastructure, speeds, train protection and electrification, available offline.")
-
                 section("Disclaimer")
-                Text("This is an independent project. It is not affiliated with or endorsed by OpenRailwayMap, OpenStreetMap or any railway company.")
-                Text("The map shows OpenStreetMap data mapped by volunteers. It can be incomplete, out of date or wrong. Each country pack is a snapshot from the date shown in the pack list.")
-                Text("Do not rely on this map for safety, navigation or railway operations. Never enter railway tracks or other areas without permission.")
-                Text("The app is provided as is, without any warranty.")
+                Text("Do not rely on this map for safety, navigation or railway operations. This app is not affiliated with or endorsed by OpenRailwayMap, OpenStreetMap or any railway company. The app is provided as is, without any warranty.")
 
                 section("Privacy")
-                Text("The app only connects to \(dataHost), to load the list of country packs and to download them. Your location is used on this device only and is never sent anywhere.")
+                Text("This app only contacts our servers to download new packs. Your location stays on your phone and is never processed or logged. We use no Third-Party SDKs. The app has no accounts.")
 
                 section("Credits")
                 ForEach(credits) { credit in

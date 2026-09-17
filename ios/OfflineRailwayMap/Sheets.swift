@@ -26,7 +26,7 @@ struct MainSheet: View {
                 case .options:
                     OptionsContent(options: $model.options)
                 case .about:
-                    AboutContent(manifestURL: model.packs.manifestURL)
+                    AboutContent()
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {

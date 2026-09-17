@@ -85,7 +85,7 @@ public enum MapMode: String, CaseIterable, Identifiable, Sendable {
 /// User-configurable options that map onto upstream global-state keys.
 public struct MapOptions: Hashable, Sendable {
     public var showConstruction = true
-    public var showProposed = true
+    public var showProposed = false
     public var showAbandoned = false
     public var showRazed = false
     /// voltageFrequency | maximumCurrent | power
