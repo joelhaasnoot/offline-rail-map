@@ -5,10 +5,15 @@
 the 512 px icon and the 1024 x 500 feature graphic, drawn from the launcher icon's geometry in
 make_app_icon.py, and captioned phone screenshots framed from take_screenshots.sh captures.
 
+With --platform ios it frames the take_ios_screenshots.sh captures instead, into a fastlane deliver
+screenshots folder: iPhone captures (ios/) at 1320 x 2868 for the 6.9" and 1284 x 2778 for the 6.5"
+display slots, and iPad captures (ipad/) at 2064 x 2752 for the 13" iPad slot.
+
 Text is set in Roboto, found in the Android SDK (platforms/android-28 ships it) or Android Studio;
 pass --font-dir to use another folder holding Roboto-Medium.ttf and Roboto-Bold.ttf.
 
 Usage: make_store_assets.py <raw screenshots dir> <fastlane images dir> [--font-dir DIR]
+       make_store_assets.py --platform ios <raw screenshots dir, holding ios/ and ipad/> <fastlane screenshots/en-US dir>
 """
 import argparse
 import glob
@@ -33,6 +38,15 @@ CAPTIONS = {
     "6_key": "A key for every colour and symbol",
     "7_countries": "Download a country once, use it anywhere",
 }
+
+
+# App Store screenshot sets: file prefix, capture folder (under the raw screenshots dir) and size.
+# App Store Connect has separate 6.9" and 6.5" iPhone slots; both are framed from the iPhone captures.
+IOS_SETS = [
+    ("iPhone69", "ios", (1320, 2868)),
+    ("iPhone65", "ios", (1284, 2778)),
+    ("iPadPro13", "ipad", (2064, 2752)),
+]
 
 
 def rgba(argb):
@@ -142,33 +156,40 @@ def _placed(layer, canvas_size, offset):
     return canvas
 
 
-def make_screenshot(path, shot_path, caption, fonts):
-    """Frames a 1080 x 1920 capture: caption on the app's orange above a dark-bezelled phone that runs
-    off the bottom edge. The result is 1080 x 1920 too, which Play accepts."""
-    width, height = 1080, 1920
+def make_screenshot(path, shot_path, caption, fonts, size=(1080, 1920)):
+    """Frames a capture: caption on the app's orange above a dark-bezelled phone that runs off the
+    bottom edge. The result has `size`: 1080 x 1920 for Play, 1320 x 2868 for the App Store. The layout
+    is designed at 1080 wide and scaled to the width."""
+    width, height = size
+    k = width / 1080
+
+    def px(value):
+        return round(value * k)
+
     img = Image.new("RGBA", (width, height), rgba(ORANGE))
 
     shot = Image.open(shot_path).convert("RGBA")
-    screen_width = 840
+    screen_width = px(840)
     screen = shot.resize((screen_width, round(shot.height * screen_width / shot.width)), Image.LANCZOS)
-    bezel = 18
+    bezel = px(18)
     phone_size = (screen.width + 2 * bezel, screen.height + 2 * bezel)
-    phone_x, phone_y = (width - phone_size[0]) // 2, 420
+    phone_x, phone_y = (width - phone_size[0]) // 2, px(420)
 
     shadow = Image.new("RGBA", (width, height))
     ImageDraw.Draw(shadow).rounded_rectangle(
-        (phone_x, phone_y + 16, phone_x + phone_size[0], phone_y + 16 + phone_size[1]), radius=64, fill=(58, 22, 0, 110))
-    img = Image.alpha_composite(img, shadow.filter(ImageFilter.GaussianBlur(24)))
+        (phone_x, phone_y + px(16), phone_x + phone_size[0], phone_y + px(16) + phone_size[1]), radius=px(64),
+        fill=(58, 22, 0, 110))
+    img = Image.alpha_composite(img, shadow.filter(ImageFilter.GaussianBlur(px(24))))
 
     phone = Image.new("RGBA", phone_size, rgba(DARK))
-    phone.paste(screen, (bezel, bezel), rounded_mask(screen.size, 46))
-    img.paste(phone, (phone_x, phone_y), rounded_mask(phone_size, 64))
+    phone.paste(screen, (bezel, bezel), rounded_mask(screen.size, px(46)))
+    img.paste(phone, (phone_x, phone_y), rounded_mask(phone_size, px(64)))
 
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(fonts[1], 72)
-    lines = wrap(draw, caption, font, 920)
-    line_height = 88
-    y = (phone_y - len(lines) * line_height) // 2 + 6
+    font = ImageFont.truetype(fonts[1], px(72))
+    lines = wrap(draw, caption, font, px(920))
+    line_height = px(88)
+    y = (phone_y - len(lines) * line_height) // 2 + px(6)
     for line in lines:
         draw.text((width / 2, y), line, font=font, fill=WHITE, anchor="ma")
         y += line_height
@@ -180,8 +201,28 @@ def main():
     parser.add_argument("shots", help="folder with the captures from take_screenshots.sh")
     parser.add_argument("images", help="fastlane images folder, e.g. fastlane/metadata/android/en-US/images")
     parser.add_argument("--font-dir")
+    parser.add_argument("--platform", choices=["android", "ios"], default="android")
     args = parser.parse_args()
     fonts = find_fonts(args.font_dir)
+
+    if args.platform == "ios":
+        # fastlane deliver picks the device from the image size, so all sets share one folder.
+        os.makedirs(args.images, exist_ok=True)
+        written = 0
+        for prefix, captures, size in IOS_SETS:
+            shots_dir = os.path.join(args.shots, captures)
+            if not os.path.isdir(shots_dir):
+                print(f"skipping {prefix}: no captures in {shots_dir}")
+                continue
+            for index, (name, caption) in enumerate(CAPTIONS.items()):
+                shot = os.path.join(shots_dir, f"{name}.png")
+                if not os.path.exists(shot):
+                    sys.exit(f"missing capture {shot}; run take_ios_screenshots.sh first")
+                make_screenshot(os.path.join(args.images, f"{prefix}-{index + 1}-{name.split('_', 1)[1]}.png"), shot,
+                                caption, fonts, size=size)
+                written += 1
+        print(f"wrote {written} App Store screenshots to {args.images}")
+        return
 
     phone_dir = os.path.join(args.images, "phoneScreenshots")
     os.makedirs(phone_dir, exist_ok=True)

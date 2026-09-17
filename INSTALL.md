@@ -1,7 +1,7 @@
 # Building Offline Rail Map
 
-How to build the country packs, the bundled world overview and the Android app, and how to package a
-release. See the [README](README.md) for what the project is and how it works.
+How to build the country packs, the bundled world overview and the Android and iOS apps, and how to
+package an Android release. See the [README](README.md) for what the project is and how it works.
 
 ## Country packs
 
@@ -75,7 +75,30 @@ To test packs built locally, serve them with `cd pipeline/out && python3 -m http
 build with `-PmanifestUrl=http://10.0.2.2:8765/manifest.json` (the host machine as seen from the
 Android emulator).
 
-## Packaging a release
+## iOS app
+
+Open `ios/OfflineRailwayMap.xcodeproj` in Xcode 16 or later and run the `OfflineRailwayMap` scheme
+(iOS 17+). Xcode fetches MapLibre Native through Swift Package Manager. From the command line:
+
+```bash
+xcodebuild -project ios/OfflineRailwayMap.xcodeproj -scheme OfflineRailwayMap -destination 'generic/platform=iOS Simulator' build
+```
+
+The app bundles `android/app/src/main/assets` as a folder, so both apps always ship the same style,
+legend, sprites, glyphs and world map. Stacked and positioned signal icons that are not in the sprite
+are composed at runtime as on Android (`ComposedImage` in `RailwayMapCore`, drawn by `SpriteComposer`),
+checked against the same golden layouts. Unit tests for the style builder, packs, key and coverage live
+in the `RailwayMapCore` package:
+
+```bash
+swift test --package-path ios/RailwayMapCore
+```
+
+To test packs built locally, serve them as described under Android app and set the `MANIFEST_URL` build setting to
+`http://localhost:8765/manifest.json` (the simulator shares the Mac's network). Packs are stored in
+Application Support and excluded from device backups; `geo:` links open the map at that location.
+
+## Packaging an Android release
 
 ```bash
 scripts/package-android-release.sh
@@ -114,3 +137,19 @@ pipeline/make_store_assets.py pipeline/work/screenshots/phone fastlane/metadata/
 
 `take_screenshots.sh` sets the display to 1080x1920 (Play rejects screenshots longer than 2:1) with a
 clean demo-mode status bar and restores it afterwards. Captions are in `make_store_assets.py`.
+
+The App Store screenshots are the same seven shots, framed into `fastlane/screenshots/en-US/`, the
+folder fastlane `deliver` uploads: iPhone at 1320x2868 and 1284x2778 (App Store Connect's 6.9" and
+6.5" display slots) and iPad at 2064x2752 (13" iPad). Install the debug build and the Netherlands pack
+on an iPhone 17 Pro Max and an iPad Pro 13-inch simulator, then:
+
+```bash
+pipeline/take_ios_screenshots.sh                                                  # iPhone, in pipeline/work/screenshots/ios
+DEVICE="iPad Pro 13-inch (M5)" pipeline/take_ios_screenshots.sh pipeline/work/screenshots/ipad
+pipeline/make_store_assets.py --platform ios pipeline/work/screenshots fastlane/screenshots/en-US
+```
+
+The simulator cannot be tapped from a script, so `take_ios_screenshots.sh` relaunches the app for each
+shot with launch arguments: `-mode` and `-cam_lat`/`-cam_lon`/`-cam_zoom` override the saved view and
+camera, and `-screenshotSheet key` or `packs` (debug builds only) opens the sheet. It sets a 9:41
+status bar and clears it afterwards.

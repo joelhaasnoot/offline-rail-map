@@ -13,6 +13,12 @@ keystore.properties
 *.keystore
 android/dist/
 
+# Xcode / Swift Package Manager
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+
 # Pipeline working data (large downloads, databases, generated tiles)
 pipeline/work/
 pipeline/out/
