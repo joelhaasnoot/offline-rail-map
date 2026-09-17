@@ -137,3 +137,17 @@ pipeline/make_store_assets.py pipeline/work/screenshots/phone fastlane/metadata/
 
 `take_screenshots.sh` sets the display to 1080x1920 (Play rejects screenshots longer than 2:1) with a
 clean demo-mode status bar and restores it afterwards. Captions are in `make_store_assets.py`.
+
+The App Store screenshots are the same seven shots, framed at 1320x2868 (the 6.9" iPhone size App
+Store Connect requires) into `fastlane/screenshots/en-US/`, the folder fastlane `deliver` uploads.
+Install the debug build and the Netherlands pack on an iPhone 17 Pro Max simulator, then:
+
+```bash
+pipeline/take_ios_screenshots.sh               # raw captures in pipeline/work/screenshots/ios
+pipeline/make_store_assets.py --platform ios pipeline/work/screenshots/ios fastlane/screenshots/en-US
+```
+
+The simulator cannot be tapped from a script, so `take_ios_screenshots.sh` relaunches the app for each
+shot with launch arguments: `-mode` and `-cam_lat`/`-cam_lon`/`-cam_zoom` override the saved view and
+camera, and `-screenshotSheet key` or `packs` (debug builds only) opens the sheet. It sets a 9:41
+status bar and clears it afterwards.

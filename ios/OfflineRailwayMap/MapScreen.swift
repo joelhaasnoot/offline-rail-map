@@ -82,6 +82,16 @@ struct MapScreen: View {
                 await packs.refreshManifestNow()
             }
         }
+        #if DEBUG
+        .task {
+            // For pipeline/take_ios_screenshots.sh: `-screenshotSheet key` opens that tab once the map
+            // has drawn, so the key can capture what is on screen.
+            if let raw = UserDefaults.standard.string(forKey: "screenshotSheet"), let tab = SheetTab(rawValue: raw) {
+                try? await Task.sleep(for: .seconds(8))
+                model.sheetTab = tab
+            }
+        }
+        #endif
         .onChange(of: packs.installed.count) { _, count in
             // First time a pack is installed and the user never moved the map: fit to the data.
             if count > 0 && model.prefs.camera == nil {
