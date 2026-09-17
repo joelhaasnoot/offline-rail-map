@@ -6,6 +6,7 @@ import SwiftUI
 
 struct MapScreen: View {
     @Bindable var model: AppModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Everything the style depends on; the style is rebuilt when any of it changes.
     private struct StyleInputs: Hashable {
@@ -107,9 +108,7 @@ struct MapScreen: View {
         }
         .sheet(item: $model.sheetTab) { tab in
             MainSheet(model: model, initialTab: tab)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                .modifier(SheetSizing(regularWidth: horizontalSizeClass == .regular))
         }
         .alert("Could not build map style", isPresented: Binding(
             get: { model.styleError != nil },
@@ -180,6 +179,30 @@ struct MapScreen: View {
         .padding(20)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .padding(32)
+    }
+}
+
+/**
+ On a phone the sheet opens at half height over the map, which stays usable above it. On an iPad a
+ sheet is a small centred form by default, too cramped for the key and the country list, so it gets
+ the large page size instead. The width class is read from the screen: inside a form sheet it is compact.
+ */
+private struct SheetSizing: ViewModifier {
+    let regularWidth: Bool
+
+    func body(content: Content) -> some View {
+        if regularWidth {
+            if #available(iOS 18, *) {
+                content.presentationSizing(.page)
+            } else {
+                content.presentationDetents([.large])
+            }
+        } else {
+            content
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+        }
     }
 }
 
