@@ -5,14 +5,15 @@
 the 512 px icon and the 1024 x 500 feature graphic, drawn from the launcher icon's geometry in
 make_app_icon.py, and captioned phone screenshots framed from take_screenshots.sh captures.
 
-With --platform ios it frames the take_ios_screenshots.sh captures instead, at the 1320 x 2868 size
-App Store Connect requires for 6.9" iPhones, into a fastlane deliver screenshots folder.
+With --platform ios it frames the take_ios_screenshots.sh captures instead, into a fastlane deliver
+screenshots folder: iPhone captures (ios/) at 1320 x 2868 for the 6.9" and 1284 x 2778 for the 6.5"
+display slots, and iPad captures (ipad/) at 2064 x 2752 for the 13" iPad slot.
 
 Text is set in Roboto, found in the Android SDK (platforms/android-28 ships it) or Android Studio;
 pass --font-dir to use another folder holding Roboto-Medium.ttf and Roboto-Bold.ttf.
 
 Usage: make_store_assets.py <raw screenshots dir> <fastlane images dir> [--font-dir DIR]
-       make_store_assets.py --platform ios <raw screenshots dir> <fastlane screenshots/en-US dir>
+       make_store_assets.py --platform ios <raw screenshots dir, holding ios/ and ipad/> <fastlane screenshots/en-US dir>
 """
 import argparse
 import glob
@@ -37,6 +38,15 @@ CAPTIONS = {
     "6_key": "A key for every colour and symbol",
     "7_countries": "Download a country once, use it anywhere",
 }
+
+
+# App Store screenshot sets: file prefix, capture folder (under the raw screenshots dir) and size.
+# App Store Connect has separate 6.9" and 6.5" iPhone slots; both are framed from the iPhone captures.
+IOS_SETS = [
+    ("iPhone69", "ios", (1320, 2868)),
+    ("iPhone65", "ios", (1284, 2778)),
+    ("iPadPro13", "ipad", (2064, 2752)),
+]
 
 
 def rgba(argb):
@@ -196,15 +206,22 @@ def main():
     fonts = find_fonts(args.font_dir)
 
     if args.platform == "ios":
-        # fastlane deliver picks the device from the image size, so the files can share one folder.
+        # fastlane deliver picks the device from the image size, so all sets share one folder.
         os.makedirs(args.images, exist_ok=True)
-        for index, (name, caption) in enumerate(CAPTIONS.items()):
-            shot = os.path.join(args.shots, f"{name}.png")
-            if not os.path.exists(shot):
-                sys.exit(f"missing capture {shot}; run take_ios_screenshots.sh first")
-            make_screenshot(os.path.join(args.images, f"iPhone69-{index + 1}-{name.split('_', 1)[1]}.png"), shot,
-                            caption, fonts, size=(1320, 2868))
-        print(f"wrote {len(CAPTIONS)} iPhone screenshots to {args.images}")
+        written = 0
+        for prefix, captures, size in IOS_SETS:
+            shots_dir = os.path.join(args.shots, captures)
+            if not os.path.isdir(shots_dir):
+                print(f"skipping {prefix}: no captures in {shots_dir}")
+                continue
+            for index, (name, caption) in enumerate(CAPTIONS.items()):
+                shot = os.path.join(shots_dir, f"{name}.png")
+                if not os.path.exists(shot):
+                    sys.exit(f"missing capture {shot}; run take_ios_screenshots.sh first")
+                make_screenshot(os.path.join(args.images, f"{prefix}-{index + 1}-{name.split('_', 1)[1]}.png"), shot,
+                                caption, fonts, size=size)
+                written += 1
+        print(f"wrote {written} App Store screenshots to {args.images}")
         return
 
     phone_dir = os.path.join(args.images, "phoneScreenshots")
