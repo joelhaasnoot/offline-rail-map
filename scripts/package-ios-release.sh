@@ -9,9 +9,11 @@
 # The Apple Developer team comes from the first of:
 #   1. ios/signing.properties (never committed) with developmentTeam, and for --upload also
 #      appStoreConnectKeyId, appStoreConnectIssuerId and appStoreConnectKeyFile
-#   2. the RELEASE_DEVELOPMENT_TEAM, RELEASE_ASC_KEY_ID, RELEASE_ASC_ISSUER_ID and
+#   2. RAILMAP_DEVELOPMENT_TEAM in ios/Config/Signing.local.xcconfig, the same gitignored file Xcode
+#      reads, so a solo developer sets the team in one place and nothing else is needed
+#   3. the RELEASE_DEVELOPMENT_TEAM, RELEASE_ASC_KEY_ID, RELEASE_ASC_ISSUER_ID and
 #      RELEASE_ASC_KEY_FILE environment variables
-#   3. 1Password, through the op CLI: the item RELEASE_IOS_1PASSWORD_ITEM (default below) with a
+#   4. 1Password, through the op CLI: the item RELEASE_IOS_1PASSWORD_ITEM (default below) with a
 #      "team id" field, and for --upload a "key id" field, an "issuer id" field and the App Store
 #      Connect key as the file "AuthKey.p8". The key is read into a temporary folder that is
 #      removed when the script exits.
@@ -69,7 +71,13 @@ read_prop() {
     sed -nE "s/^$1=(.*)$/\1/p" "$props"
 }
 
+local_xcconfig=Config/Signing.local.xcconfig
+
 team_id=$(read_prop developmentTeam)
+if [ -z "$team_id" ] && [ -f "$local_xcconfig" ]; then
+    # Same file Xcode reads, so the team only has to be written down once.
+    team_id=$(sed -nE 's|^[[:space:]]*RAILMAP_DEVELOPMENT_TEAM[[:space:]]*=[[:space:]]*([^/[:space:]]+).*|\1|p' "$local_xcconfig" | tail -1)
+fi
 asc_key_id=$(read_prop appStoreConnectKeyId)
 asc_issuer_id=$(read_prop appStoreConnectIssuerId)
 asc_key_file=$(read_prop appStoreConnectKeyFile)

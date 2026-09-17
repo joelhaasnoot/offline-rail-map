@@ -148,12 +148,16 @@ asks first; `--yes` skips the prompt). The signing certificate and provisioning 
 login keychain as they do in Xcode, and `-allowProvisioningUpdates` lets Xcode fetch or renew a
 missing profile.
 
-The Team ID and, for `--upload`, the App Store Connect API key live in 1Password (item "Offline Rail
-Map iOS signing": a `team id` field, a `key id` field, an `issuer id` field and the key as the file
-`AuthKey.p8`); the script reads them with the `op` CLI into a temporary folder that is removed
-afterwards. Point `RELEASE_IOS_1PASSWORD_ITEM` at another item if needed, or skip 1Password with
-`ios/signing.properties` (gitignored) or the `RELEASE_DEVELOPMENT_TEAM`, `RELEASE_ASC_KEY_ID`,
-`RELEASE_ASC_ISSUER_ID` and `RELEASE_ASC_KEY_FILE` environment variables:
+If `ios/Config/Signing.local.xcconfig` already has your `RAILMAP_DEVELOPMENT_TEAM`, the script reads
+the Team ID from there and needs nothing else, so one file serves both Xcode and packaging.
+
+For `--upload` it also needs an App Store Connect API key, which lives in 1Password alongside the
+Team ID (item "Offline Rail Map iOS signing": a `team id` field, a `key id` field, an `issuer id`
+field and the key as the file `AuthKey.p8`); the script reads them with the `op` CLI into a temporary
+folder that is removed afterwards. Point `RELEASE_IOS_1PASSWORD_ITEM` at another item if needed, or
+skip 1Password with `ios/signing.properties` (gitignored) or the `RELEASE_DEVELOPMENT_TEAM`,
+`RELEASE_ASC_KEY_ID`, `RELEASE_ASC_ISSUER_ID` and `RELEASE_ASC_KEY_FILE` environment variables. The
+key file must keep Apple's `AuthKey_<key id>.p8` name, which is how `altool` finds it:
 
 ```properties
 developmentTeam=ABCDE12345
