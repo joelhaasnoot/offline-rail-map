@@ -7,11 +7,16 @@ local.properties
 captures/
 .kotlin/
 
-# Release signing secrets and packaged releases (see scripts/package-android-release.sh)
+# Release signing secrets and packaged releases (see scripts/package-android-release.sh
+# and scripts/package-ios-release.sh)
 keystore.properties
 *.jks
 *.keystore
 android/dist/
+signing.properties
+ios/Config/Signing.local.xcconfig
+ios/dist/
+*.p8
 
 # Xcode / Swift Package Manager
 xcuserdata/

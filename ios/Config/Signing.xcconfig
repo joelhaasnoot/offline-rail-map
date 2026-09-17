@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joel Haasnoot
+//
+// Signing settings for the app, shared by Xcode and scripts/package-ios-release.sh.
+//
+// The Apple Developer team is deliberately not committed: this is an open-source app and a fork
+// signs it with its own team and bundle identifier. Supply yours in either of these ways.
+//
+//   1. Config/Signing.local.xcconfig (gitignored), which is included below when it exists. Copy
+//      Signing.local.xcconfig.example to it and fill in your Team ID. This is what Xcode reads.
+//   2. On the xcodebuild command line, which wins over the file:
+//        xcodebuild ... RAILMAP_DEVELOPMENT_TEAM=ABCDE12345
+//      scripts/package-ios-release.sh does this for you, and can also read the Team ID from
+//      1Password so that nothing lands on disk.
+//
+// Without a team the app still builds and runs in the simulator; only signing for a device, an
+// archive or the App Store needs one.
+
+// Defaults, overridden by the local file below.
+RAILMAP_DEVELOPMENT_TEAM =
+RAILMAP_BUNDLE_ID = com.offlinerailmap.ios
+
+#include? "Signing.local.xcconfig"
+
+DEVELOPMENT_TEAM = $(RAILMAP_DEVELOPMENT_TEAM)
+CODE_SIGN_STYLE = Automatic

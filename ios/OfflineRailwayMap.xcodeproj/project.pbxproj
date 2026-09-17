@@ -16,6 +16,7 @@
 		0A0000000000000000000004 /* OfflineRailwayMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OfflineRailwayMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A0000000000000000000006 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../android/app/src/main/assets; sourceTree = SOURCE_ROOT; };
 		0A0000000000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Config/Info.plist; sourceTree = SOURCE_ROOT; };
+		0A0000000000000000000008 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Signing.xcconfig; path = Config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +45,7 @@
 			children = (
 				0A0000000000000000000005 /* OfflineRailwayMap */,
 				0A0000000000000000000007 /* Info.plist */,
+				0A0000000000000000000008 /* Signing.xcconfig */,
 				0A0000000000000000000006 /* assets */,
 				0A0000000000000000000003 /* Products */,
 			);
@@ -146,6 +148,7 @@
 /* Begin XCBuildConfiguration section */
 		0A0000000000000000000032 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A0000000000000000000008 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -178,6 +181,7 @@
 		};
 		0A0000000000000000000033 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 0A0000000000000000000008 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -225,7 +229,7 @@
 				);
 				MANIFEST_URL = "https://data.offlinerailmap.com/manifest.json";
 				MARKETING_VERSION = 0.1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.offlinerailmap.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RAILMAP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -262,7 +266,7 @@
 				);
 				MANIFEST_URL = "https://data.offlinerailmap.com/manifest.json";
 				MARKETING_VERSION = 0.1.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.offlinerailmap.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(RAILMAP_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

@@ -1,7 +1,7 @@
 # Building Offline Rail Map
 
 How to build the country packs, the bundled world overview and the Android and iOS apps, and how to
-package an Android release. See the [README](README.md) for what the project is and how it works.
+package an Android or iOS release. See the [README](README.md) for what the project is and how it works.
 
 ## Country packs
 
@@ -98,6 +98,13 @@ To test packs built locally, serve them as described under Android app and set t
 `http://localhost:8765/manifest.json` (the simulator shares the Mac's network). Packs are stored in
 Application Support and excluded from device backups; `geo:` links open the map at that location.
 
+Signing settings live in `ios/Config/Signing.xcconfig`, the base configuration for both build
+configurations. The Apple Developer team is not committed, so building for the simulator works out of
+the box but signing for a device or an archive needs yours: copy
+`ios/Config/Signing.local.xcconfig.example` to `ios/Config/Signing.local.xcconfig` (gitignored) and
+fill in `RAILMAP_DEVELOPMENT_TEAM`. The same file overrides `RAILMAP_BUNDLE_ID`, which a fork needs
+because the App Store allows only one app per bundle identifier.
+
 ## Packaging an Android release
 
 ```bash
@@ -120,6 +127,43 @@ storeFile=/path/to/upload.jks
 storePassword=...
 keyAlias=upload
 keyPassword=...
+```
+
+## Packaging an iOS release
+
+```bash
+scripts/package-ios-release.sh
+```
+
+This runs the unit tests, archives the app, checks it is signed with a distribution certificate and
+reads its packs over https, and writes `ios/dist/offline-rail-map-<version>.ipa` together with
+`-dSYMs.zip`, the debug symbols that symbolicate a crash report from that build. Like the Android
+script it refuses to package uncommitted changes in `ios/` (override with `--allow-dirty`). Bump
+`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the Xcode project first; App Store Connect
+rejects a build number it has already seen.
+
+Pass `--adhoc` to export a build that installs on registered devices instead of one for the App
+Store, and `--upload` to send the `.ipa` to App Store Connect for TestFlight once it is built (it
+asks first; `--yes` skips the prompt). The signing certificate and provisioning profile come from the
+login keychain as they do in Xcode, and `-allowProvisioningUpdates` lets Xcode fetch or renew a
+missing profile.
+
+If `ios/Config/Signing.local.xcconfig` already has your `RAILMAP_DEVELOPMENT_TEAM`, the script reads
+the Team ID from there and needs nothing else, so one file serves both Xcode and packaging.
+
+For `--upload` it also needs an App Store Connect API key, which lives in 1Password alongside the
+Team ID (item "Offline Rail Map iOS signing": a `team id` field, a `key id` field, an `issuer id`
+field and the key as the file `AuthKey.p8`); the script reads them with the `op` CLI into a temporary
+folder that is removed afterwards. Point `RELEASE_IOS_1PASSWORD_ITEM` at another item if needed, or
+skip 1Password with `ios/signing.properties` (gitignored) or the `RELEASE_DEVELOPMENT_TEAM`,
+`RELEASE_ASC_KEY_ID`, `RELEASE_ASC_ISSUER_ID` and `RELEASE_ASC_KEY_FILE` environment variables. The
+key file must keep Apple's `AuthKey_<key id>.p8` name, which is how `altool` finds it:
+
+```properties
+developmentTeam=ABCDE12345
+appStoreConnectKeyId=XXXXXXXXXX
+appStoreConnectIssuerId=00000000-0000-0000-0000-000000000000
+appStoreConnectKeyFile=/path/to/AuthKey_XXXXXXXXXX.p8
 ```
 
 ## Store graphics

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Template for xcodebuild -exportArchive. scripts/package-ios-release.sh copies this to a
+	     temporary file and substitutes __METHOD__ (app-store-connect or release-testing) and
+	     __TEAM_ID__, so the Team ID never has to be committed. -->
+	<key>method</key>
+	<string>__METHOD__</string>
+	<key>teamID</key>
+	<string>__TEAM_ID__</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>destination</key>
+	<string>export</string>
+	<!-- The app is a map viewer with no App Store services to thin for; keep every architecture. -->
+	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>uploadSymbols</key>
+	<true/>
+	<!-- No bitcode since Xcode 14, and the app has no manageable app-group or iCloud entitlements. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+</dict>
+</plist>
