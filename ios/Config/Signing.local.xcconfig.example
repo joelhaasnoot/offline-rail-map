@@ -1,0 +1,8 @@
+// Copy to Signing.local.xcconfig (gitignored) and fill in your own values.
+//
+// The Team ID is the ten-character string in the top right of developer.apple.com/account, or in
+// Xcode under Settings > Accounts > Manage Certificates.
+RAILMAP_DEVELOPMENT_TEAM = ABCDE12345
+
+// Only needed in a fork: the App Store requires a bundle identifier nobody else has claimed.
+// RAILMAP_BUNDLE_ID = com.example.railmap
