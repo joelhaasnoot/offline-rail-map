@@ -18,8 +18,8 @@ GLOW = (0x2E, 0xE0, 0x6F, 0x66)
 
 # Geometry of the signal head in its 18 x 17.12 drawing units, as in pipeline/make_app_icon.py.
 HEAD_BOX = (5, 0.55, 13, 16.55)
-TOP_LAMP = (9, 4.6, 2.25)
-BOTTOM_LAMP = (9, 12.5, 2.25)
+LIT_LAMP = (9, 4.6, 2.25)  # green is the top lamp
+OFF_LAMP = (9, 12.5, 2.25)
 GLOW_RADIUS = 3.05
 CENTER = (9.0, 8.55)
 # Signal height as a share of the icon; Android shows it at about this size inside its launcher mask.
@@ -42,11 +42,11 @@ img = Image.new("RGBA", (canvas, canvas), ORANGE)
 x0, y0 = to_px(HEAD_BOX[0], HEAD_BOX[1])
 x1, y1 = to_px(HEAD_BOX[2], HEAD_BOX[3])
 ImageDraw.Draw(img).rounded_rectangle([x0, y0, x1, y1], radius=(x1 - x0) / 2, fill=HEAD)
-disc(img, *TOP_LAMP, UNLIT)
+disc(img, *OFF_LAMP, UNLIT)
 glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-disc(glow, BOTTOM_LAMP[0], BOTTOM_LAMP[1], GLOW_RADIUS, GLOW)
+disc(glow, LIT_LAMP[0], LIT_LAMP[1], GLOW_RADIUS, GLOW)
 img = Image.alpha_composite(img, glow)
-disc(img, *BOTTOM_LAMP, GREEN)
+disc(img, *LIT_LAMP, GREEN)
 
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "OfflineRailwayMap/Assets.xcassets/AppIcon.appiconset/AppIcon.png")
 os.makedirs(os.path.dirname(out), exist_ok=True)
