@@ -23,7 +23,7 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from make_app_icon import BAR, BOTTOM, CENTER, DARK, GLOW, GLOW_RADIUS, GREEN, ORANGE, TOP, UNLIT  # noqa: E402
+from make_app_icon import BAR, CENTER, DARK, GLOW, GLOW_RADIUS, GREEN, LIT, OFF, ORANGE, UNLIT  # noqa: E402
 
 SS = 4  # supersampling for smooth edges
 WHITE = (255, 255, 255, 255)
@@ -87,11 +87,11 @@ def draw_signal(size, unit):
         ImageDraw.Draw(target).ellipse((ox + (cx - r) * u, oy + (cy - r) * u, ox + (cx + r) * u, oy + (cy + r) * u),
                                        fill=colour)
 
-    lamp(*TOP, rgba(UNLIT), img)
+    lamp(*OFF, rgba(UNLIT), img)
     glow = Image.new("RGBA", (s, s))
-    lamp(BOTTOM[0], BOTTOM[1], GLOW_RADIUS, rgba(GLOW), glow)
+    lamp(LIT[0], LIT[1], GLOW_RADIUS, rgba(GLOW), glow)
     img = Image.alpha_composite(img, glow)
-    lamp(*BOTTOM, rgba(GREEN), img)
+    lamp(*LIT, rgba(GREEN), img)
     return img.resize((size, size), Image.LANCZOS)
 
 

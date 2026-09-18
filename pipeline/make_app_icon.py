@@ -50,26 +50,53 @@ def vector(body):
 
 
 # Signal geometry in head units, shared with make_store_assets.py: bar (x, y, w, h), lamps (cx, cy, r).
+# Green is the top lamp of a two-aspect head; the bottom one is dark.
 BAR = (5, 0.55, 8, 16)
-TOP = (9, 4.6, 2.25)
-BOTTOM = (9, 12.5, 2.25)
+LIT = (9, 4.6, 2.25)
+OFF = (9, 12.5, 2.25)
 GLOW_RADIUS = 3.05
+HATCH_PITCH = 1.0  # spacing of the diagonal stripes shading the dark lamp in the themed icon
 
 HEAD_BAR = rounded_bar(*BAR)
-TOP_LAMP = circle(*TOP)
-BOTTOM_LAMP = circle(*BOTTOM)
+LIT_LAMP = circle(*LIT)
+OFF_LAMP = circle(*OFF)
 
 FOREGROUND = vector(
     f'        <path android:fillColor="{DARK}" android:pathData="{HEAD_BAR}"/>\n'
-    f'        <path android:fillColor="{UNLIT}" android:pathData="{TOP_LAMP}"/>\n'
-    f'        <path android:fillColor="{GLOW}" android:pathData="{circle(BOTTOM[0], BOTTOM[1], GLOW_RADIUS)}"/>\n'
-    f'        <path android:fillColor="{GREEN}" android:pathData="{BOTTOM_LAMP}"/>\n'
+    f'        <path android:fillColor="{UNLIT}" android:pathData="{OFF_LAMP}"/>\n'
+    f'        <path android:fillColor="{GLOW}" android:pathData="{circle(LIT[0], LIT[1], GLOW_RADIUS)}"/>\n'
+    f'        <path android:fillColor="{GREEN}" android:pathData="{LIT_LAMP}"/>\n'
 )
 
-# Themed icons are single-colour silhouettes: the signal head with its lamps cut out.
+
+
+def hatch(cx, cy, r, pitch):
+    """Diagonal stripes (rising to the right) filling the circle, as one path of chord-bounded bands."""
+    bands = []
+    # Stripe k covers u in [k*pitch, k*pitch + pitch/2], where u is the offset along the (1, 1) normal.
+    k = -int(r / pitch) - 1
+    while k * pitch < r:
+        u0, u1 = max(k * pitch, -r), min(k * pitch + pitch / 2, r)
+        if u1 > u0:
+            pts = []
+            for u, sign in ((u0, 1), (u1, -1)):
+                half = (r * r - u * u) ** 0.5
+                # Points on the circle at offset u along the normal, v = +/- half along the stripe.
+                for v in (-half, half)[::sign]:
+                    pts.append((cx + (u - v) / 2 ** 0.5, cy + (u + v) / 2 ** 0.5))
+            a, b, c, d = pts
+            bands.append(f"M{n(a[0])},{n(a[1])} L{n(b[0])},{n(b[1])} A{n(r)},{n(r)} 0 0 0 {n(c[0])},{n(c[1])} "
+                         f"L{n(d[0])},{n(d[1])} A{n(r)},{n(r)} 0 0 0 {n(a[0])},{n(a[1])} Z")
+        k += 1
+    return " ".join(bands)
+
+
+# Themed icons are single-colour silhouettes: the signal head with its lamps cut out, the lit one
+# clear and the dark one shaded with diagonal stripes so the two still read differently.
 MONOCHROME = vector(
     f'        <path android:fillColor="{DARK}" android:fillType="evenOdd" '
-    f'android:pathData="{HEAD_BAR} {TOP_LAMP} {BOTTOM_LAMP}"/>\n'
+    f'android:pathData="{HEAD_BAR} {LIT_LAMP} {OFF_LAMP}"/>\n'
+    f'        <path android:fillColor="{DARK}" android:pathData="{hatch(*OFF, HATCH_PITCH)}"/>\n'
 )
 
 BACKGROUND = (HEADER +
