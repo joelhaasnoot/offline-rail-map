@@ -14,6 +14,7 @@ import com.google.gson.JsonElement
 import kotlin.math.floor
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -67,6 +68,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.offlinerailmap.android.data.InstalledPack
 import com.offlinerailmap.android.data.PackStore
 import com.offlinerailmap.android.data.Prefs
+import com.offlinerailmap.android.map.FrameStats
 import com.offlinerailmap.android.map.MapMode
 import com.offlinerailmap.android.map.MapOptions
 import com.offlinerailmap.android.map.SpriteComposer
@@ -159,6 +161,9 @@ fun MapScreen() {
     val mapView = remember {
         MapView(context).also { view ->
             view.onCreate(null)
+            if (BuildConfig.FRAME_STATS) {
+                FrameStats.attach(view)
+            }
             view.getMapAsync { m ->
                 m.uiSettings.isRotateGesturesEnabled = true
                 m.uiSettings.isTiltGesturesEnabled = false
@@ -219,6 +224,7 @@ fun MapScreen() {
     LaunchedEffect(map, mode, options, installed) {
         val m = map ?: return@LaunchedEffect
         styleReady = false
+        val started = SystemClock.elapsedRealtime()
         val json = try {
             withContext(Dispatchers.Default) { StyleBuilder.build(context, mode, options, installed) }
         } catch (e: Exception) {
@@ -226,7 +232,9 @@ fun MapScreen() {
             Toast.makeText(context, "Could not build map style: ${e.message}", Toast.LENGTH_LONG).show()
             return@LaunchedEffect
         }
+        val built = SystemClock.elapsedRealtime()
         m.setStyle(Style.Builder().fromJson(json)) { style ->
+            Log.i(TAG, "style built in ${built - started} ms, loaded ${SystemClock.elapsedRealtime() - built} ms later")
             styleReady = true
             if (locationWanted) {
                 enableLocation(context, m, style) { locationTracking = it }
