@@ -73,6 +73,7 @@ echo "$DATA_DATE" > "$ORM/data/filtered/data.osm.pbf.timestamp"
 echo "== Import into PostGIS (docker) =="
 (cd "$ORM" && docker compose build db import && docker compose up -d --force-recreate --wait db \
   && OSM2PGSQL_NUMPROC="${OSM2PGSQL_NUMPROC:-8}" docker compose run --rm --no-deps import import)
+psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$PIPELINE/sql/offline_tiles.sql"
 
 echo "== Bounding box =="
 BBOX="$(psql "$DB_URL" -tAc "select round(ST_XMin(e)::numeric-0.05,3)||','||round(ST_YMin(e)::numeric-0.05,3)||','||round(ST_XMax(e)::numeric+0.05,3)||','||round(ST_YMax(e)::numeric+0.05,3) from (select ST_Extent(ST_Transform(way,4326)) e from railway_line) s")"
@@ -80,8 +81,13 @@ echo "bbox: $BBOX"
 
 echo "== Bake vector tiles =="
 # Functions that only start at zoom 17 are pulled down to the baked maximum zoom so their data is
-# present in the deepest tiles (MapLibre overzooms from there).
-sed "s/minzoom: 17/minzoom: $MAXZOOM/" "$ORM/martin/configuration.yml" > "$WORK/martin-bake.yml"
+# present in the deepest tiles (MapLibre overzooms from there). Then every function is limited to
+# the zooms the app's style draws it at. Railway lines come from the offline variant of the upstream
+# function (pipeline/sql/offline_tiles.sql).
+sed -e "s/minzoom: 17/minzoom: $MAXZOOM/" -e "s/function: railway_line_high$/function: railway_line_high_offline/" \
+  "$ORM/martin/configuration.yml" > "$WORK/martin-full.yml"
+python3 "$PIPELINE/trim_zooms.py" "$WORK/martin-full.yml" "$ROOT/android/app/src/main/assets/style/orm-style.json" \
+  --maxzoom "$MAXZOOM" > "$WORK/martin-bake.yml"
 pkill -x martin || true
 DATABASE_URL="$DB_URL" martin --config "$WORK/martin-bake.yml" --listen-addresses "127.0.0.1:$MARTIN_PORT" > "$WORK/martin.log" 2>&1 &
 MARTIN_PID=$!
