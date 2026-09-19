@@ -6,6 +6,8 @@
 # distribution certificate and points at an https pack manifest, exports an .ipa and copies it with
 # the debug symbols to ios/dist/ with the version in the name.
 #
+# Run it on main, level with origin/main: releases are only built from reviewed, pushed commits.
+#
 # The Apple Developer team comes from the first of:
 #   1. ios/signing.properties (never committed) with developmentTeam, and for --upload also
 #      appStoreConnectKeyId, appStoreConnectIssuerId and appStoreConnectKeyFile
@@ -63,6 +65,13 @@ if ! $allow_dirty && [ -n "$(git status --porcelain -- .)" ]; then
     git status --short -- .
     fail "ios/ has uncommitted changes; commit them or pass --allow-dirty"
 fi
+
+# Releases come from main as it is on GitHub, so every build matches a reviewed, pushed commit.
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = main ] || fail "releases are built from main, but this is $branch"
+git fetch --quiet origin main || fail "could not fetch origin/main to check that main is up to date"
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||
+    fail "main is not at origin/main; pull or push first"
 
 op_item="${RELEASE_IOS_1PASSWORD_ITEM:-op://Private/Offline Rail Map iOS signing}"
 props=signing.properties
