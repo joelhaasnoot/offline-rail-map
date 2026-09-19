@@ -95,16 +95,16 @@ object StyleBuilder {
         worldLabels.forEach { layers.put(if (mask == null) it else WorldLayers.hideInsideMask(it, mask)) }
 
         // --- OpenRailwayMap ---
-        val ormSources = orm.getJSONObject("sources")
-        val vectorSources = ormSources.keys().asSequence()
-            .filter { ormSources.getJSONObject(it).optString("type") == "vector" }
-            .toSet()
+        // Upstream spreads its layers over many vector sources (separate tile endpoints on the
+        // website), but a pack keeps them all in one file. One source per pack means every tile
+        // is read and decoded once instead of once per upstream source.
+        val ormSource = orm.getJSONObject("sources").let { s ->
+            s.keys().asSequence().map { s.getJSONObject(it) }.first { it.optString("type") == "vector" }
+        }
         for (pack in packs) {
-            for (name in vectorSources) {
-                val src = JSONObject(ormSources.getJSONObject(name).toString())
-                src.put("url", pmtilesUrl(pack.railwayFile))
-                sources.put("${name}__${pack.info.id}", src)
-            }
+            val src = JSONObject(ormSource.toString())
+            src.put("url", pmtilesUrl(pack.railwayFile))
+            sources.put(railwaySource(pack), src)
         }
         val processed = ormLayers(context, mode, options)
         for (layer in processed.layers) {
@@ -112,7 +112,7 @@ object StyleBuilder {
             for (pack in packs) {
                 val copy = JSONObject(text)
                 copy.put("id", "${layer.getString("id")}__${pack.info.id}")
-                copy.put("source", "${layer.getString("source")}__${pack.info.id}")
+                copy.put("source", railwaySource(pack))
                 layers.put(copy)
             }
         }
@@ -167,6 +167,9 @@ object StyleBuilder {
                     continue
                 }
                 substituted.remove("filter")
+            } else if (filter != null && neverMatches(filter)) {
+                hidden++
+                continue
             }
             result.add(substituted)
         }
@@ -177,6 +180,8 @@ object StyleBuilder {
     }
 
     private fun pmtilesUrl(file: File): String = "pmtiles://file://" + file.absolutePath
+
+    private fun railwaySource(pack: InstalledPack): String = "railway__${pack.info.id}"
 
     private fun globalState(orm: JSONObject, mode: MapMode, options: MapOptions): Map<String, Any?> {
         val state = HashMap<String, Any?>()
@@ -310,6 +315,124 @@ object StyleBuilder {
             }
             else -> return rebuild()
         }
+    }
+
+    /**
+     * True when [filter] provably rejects every feature: for some property the filter only compares
+     * with constants, no value of it (each of those constants, any other value, or none) lets the
+     * filter pass. This catches the layers prepare_style.py splits off per `line-dasharray` branch
+     * whose branch the base filter already excludes for the current options. MapLibre would still
+     * test them against every feature of every tile, which is most of the tile parsing time.
+     */
+    internal fun neverMatches(filter: Any): Boolean {
+        val keys = HashSet<String>().also { collectGetKeys(filter, it) }
+        return keys.any { key ->
+            if (!onlyComparedWithConstants(filter, key)) {
+                return@any false
+            }
+            val values = ArrayList<Any>().also { comparedConstants(filter, key, it) }
+            values.add(OTHER_VALUE)
+            values.add(JSONObject.NULL)
+            values.all { simplify(replaceGet(filter, key, it)) == false }
+        }
+    }
+
+    /** Stands for any property value the filter does not mention. */
+    private const val OTHER_VALUE = " other"
+
+    private fun isGet(e: Any?, key: String): Boolean =
+        e is JSONArray && e.length() == 2 && e.opt(0) == "get" && e.opt(1) == key
+
+    private fun isLiteralArray(e: Any?): Boolean =
+        e is JSONArray && e.length() == 2 && e.opt(0) == "literal" && e.opt(1) is JSONArray
+
+    private fun collectGetKeys(e: Any?, out: MutableSet<String>) {
+        if (e !is JSONArray) {
+            return
+        }
+        if (e.length() == 2 && e.opt(0) == "get" && e.opt(1) is String) {
+            out.add(e.getString(1))
+            return
+        }
+        for (i in 0 until e.length()) {
+            collectGetKeys(e.opt(i), out)
+        }
+    }
+
+    /** Whether every `["get", key]` in [e] is compared with a constant by `==`, `!=`, `in` or `match`. */
+    private fun onlyComparedWithConstants(e: Any?, key: String): Boolean {
+        if (isGet(e, key)) {
+            return false
+        }
+        if (e !is JSONArray || e.length() == 0) {
+            return true
+        }
+        val op = e.opt(0)
+        if (op == "literal") {
+            return true
+        }
+        if ((op == "==" || op == "!=") && e.length() == 3) {
+            if (isGet(e.opt(1), key) && e.opt(2) !is JSONArray || isGet(e.opt(2), key) && e.opt(1) !is JSONArray) {
+                return true
+            }
+        }
+        if (op == "in" && e.length() == 3 && isGet(e.opt(1), key) && isLiteralArray(e.opt(2))) {
+            return true
+        }
+        if (op == "match" && isGet(e.opt(1), key)) {
+            return (2 until e.length()).all { onlyComparedWithConstants(e.opt(it), key) }
+        }
+        return (1 until e.length()).all { onlyComparedWithConstants(e.opt(it), key) }
+    }
+
+    /** The constants `["get", key]` is compared with anywhere in [e]. */
+    private fun comparedConstants(e: Any?, key: String, out: MutableList<Any>) {
+        if (e !is JSONArray || e.length() == 0) {
+            return
+        }
+        val op = e.opt(0)
+        when {
+            (op == "==" || op == "!=") && e.length() == 3 && isGet(e.opt(1), key) -> out.add(e.opt(2))
+            (op == "==" || op == "!=") && e.length() == 3 && isGet(e.opt(2), key) -> out.add(e.opt(1))
+            op == "in" && e.length() == 3 && isGet(e.opt(1), key) && isLiteralArray(e.opt(2)) -> {
+                val values = (e.get(2) as JSONArray).getJSONArray(1)
+                for (i in 0 until values.length()) {
+                    out.add(values.get(i))
+                }
+            }
+            op == "match" && isGet(e.opt(1), key) -> {
+                var i = 2
+                while (i < e.length() - 1) {
+                    val labels = e.opt(i)
+                    if (labels is JSONArray) {
+                        for (j in 0 until labels.length()) {
+                            out.add(labels.get(j))
+                        }
+                    } else {
+                        out.add(labels)
+                    }
+                    i += 2
+                }
+            }
+        }
+        for (i in 1 until e.length()) {
+            comparedConstants(e.opt(i), key, out)
+        }
+    }
+
+    /** Deep-copies [e] with every `["get", key]` replaced by [value]. */
+    private fun replaceGet(e: Any?, key: String, value: Any): Any? {
+        if (isGet(e, key)) {
+            return value
+        }
+        if (e !is JSONArray) {
+            return e
+        }
+        val arr = JSONArray()
+        for (i in 0 until e.length()) {
+            arr.put(replaceGet(e.opt(i), key, value))
+        }
+        return arr
     }
 
     private fun finishCase(pairs: List<Any?>, fallback: Any?): JSONArray {
