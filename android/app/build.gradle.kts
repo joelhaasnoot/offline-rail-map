@@ -51,6 +51,18 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.findByName("release")
+            buildConfigField("boolean", "FRAME_STATS", "false")
+        }
+        debug {
+            buildConfigField("boolean", "FRAME_STATS", "true")
+        }
+        // Release code with frame timing logs, signed with the debug key so it installs over a
+        // debug build and keeps its packs. For measuring map performance on real phones.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "FRAME_STATS", "true")
         }
     }
 
