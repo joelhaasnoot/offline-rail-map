@@ -6,6 +6,8 @@
 # installable .apk, checks both are signed and point at an https pack manifest, and copies them to
 # android/dist/ with the version in the name.
 #
+# Run it on main, level with origin/main: releases are only built from reviewed, pushed commits.
+#
 # The upload key comes from the first of:
 #   1. android/keystore.properties (never committed) with storeFile, storePassword, keyAlias, keyPassword
 #   2. the RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD
@@ -51,6 +53,13 @@ if ! $allow_dirty && [ -n "$(git status --porcelain -- .)" ]; then
     git status --short -- .
     fail "android/ has uncommitted changes; commit them or pass --allow-dirty"
 fi
+
+# Releases come from main as it is on GitHub, so every build matches a reviewed, pushed commit.
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = main ] || fail "releases are built from main, but this is $branch"
+git fetch --quiet origin main || fail "could not fetch origin/main to check that main is up to date"
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||
+    fail "main is not at origin/main; pull or push first"
 
 op_item="${RELEASE_1PASSWORD_ITEM:-op://Private/Offline Rail Map Android upload key}"
 if [ -f keystore.properties ]; then
