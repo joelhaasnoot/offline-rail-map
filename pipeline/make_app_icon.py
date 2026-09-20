@@ -91,12 +91,12 @@ def hatch(cx, cy, r, pitch):
     return " ".join(bands)
 
 
-# Themed icons are single-colour silhouettes: the signal head with its lamps cut out, the lit one
-# clear and the dark one shaded with diagonal stripes so the two still read differently.
+# Themed icons are single-colour silhouettes: the signal head with its lamps cut out, the dark one
+# clear and the lit one shaded with diagonal stripes, which stand in for its colour.
 MONOCHROME = vector(
     f'        <path android:fillColor="{DARK}" android:fillType="evenOdd" '
     f'android:pathData="{HEAD_BAR} {LIT_LAMP} {OFF_LAMP}"/>\n'
-    f'        <path android:fillColor="{DARK}" android:pathData="{hatch(*OFF, HATCH_PITCH)}"/>\n'
+    f'        <path android:fillColor="{DARK}" android:pathData="{hatch(*LIT, HATCH_PITCH)}"/>\n'
 )
 
 BACKGROUND = (HEADER +
