@@ -29,6 +29,10 @@ final class MapController {
     @ObservationIgnored private weak var mapView: MLNMapView?
     @ObservationIgnored private var styleJSON: String?
     @ObservationIgnored private var delegate: MapDelegate?
+    @ObservationIgnored private var locationManager: CLLocationManager?
+    @ObservationIgnored private var locationDelegate: LocationDelegate?
+    /// Set while the permission prompt is up, so tracking starts once the user allows it.
+    @ObservationIgnored private var trackingRequested = false
 
     func makeMapView() -> MLNMapView {
         if let mapView {
@@ -101,20 +105,46 @@ final class MapController {
         mapView.setCenter(CLLocationCoordinate2D(latitude: camera.lat, longitude: camera.lon), zoomLevel: camera.zoom, animated: true)
     }
 
-    /// Follows the user's location, asking for permission first when needed.
+    /**
+     Follows the user's location, asking for permission first when needed. The app asks itself rather
+     than leaving it to MapLibre: MapLibre starts locating while the prompt is still up, Core Location
+     reports that as denied, and the user would see the "denied" alert right after allowing access.
+     */
     func startTracking() {
         guard let mapView else {
             return
         }
-        switch CLLocationManager().authorizationStatus {
+        let manager = locationManager ?? makeLocationManager()
+        switch manager.authorizationStatus {
         case .denied, .restricted:
             locationDenied = true
-            return
+        case .notDetermined:
+            trackingRequested = true
+            manager.requestWhenInUseAuthorization()
         default:
-            break
+            mapView.showsUserLocation = true
+            mapView.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
         }
-        mapView.showsUserLocation = true
-        mapView.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+    }
+
+    private func makeLocationManager() -> CLLocationManager {
+        let manager = CLLocationManager()
+        let delegate = LocationDelegate(controller: self)
+        locationDelegate = delegate // the manager only holds it weakly
+        manager.delegate = delegate
+        locationManager = manager
+        return manager
+    }
+
+    fileprivate func authorizationDidChange(_ status: CLAuthorizationStatus) {
+        guard trackingRequested && status != .notDetermined else {
+            return
+        }
+        trackingRequested = false
+        // The user just answered the prompt; declining needs no further alert.
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            startTracking()
+        }
     }
 
     /// The zoom and the legend feature keys of everything the map currently renders on screen.
@@ -166,8 +196,26 @@ final class MapController {
 
     fileprivate func locationFailed(_ error: Error) {
         tracking = false
-        if (error as? CLError)?.code == .denied {
+        // Core Location also reports "denied" while the permission prompt is up; only a real refusal counts.
+        let status = locationManager?.authorizationStatus ?? CLLocationManager().authorizationStatus
+        if (error as? CLError)?.code == .denied && (status == .denied || status == .restricted) {
             locationDenied = true
+        }
+    }
+}
+
+/// Core Location calls back on the thread that made the manager, the main thread here.
+private final class LocationDelegate: NSObject, CLLocationManagerDelegate {
+    private weak var controller: MapController?
+
+    init(controller: MapController) {
+        self.controller = controller
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        MainActor.assumeIsolated {
+            controller?.authorizationDidChange(status)
         }
     }
 }
