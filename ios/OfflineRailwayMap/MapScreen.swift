@@ -78,6 +78,10 @@ struct MapScreen: View {
             await model.applyStyle()
         }
         .task {
+            // Nothing to show without a pack, so a fresh install opens straight onto the country list.
+            if packs.installed.isEmpty && model.sheetTab == nil {
+                model.sheetTab = .packs
+            }
             // Know which packs exist so the empty state can offer the right download.
             if packs.available.isEmpty {
                 await packs.refreshManifestNow()
@@ -183,12 +187,14 @@ struct MapScreen: View {
 }
 
 /**
- On a phone the sheet opens at half height over the map, which stays usable above it. On an iPad a
- sheet is a small centred form by default, too cramped for the key and the country list, so it gets
- the large page size instead. The width class is read from the screen: inside a form sheet it is compact.
+ On a phone the sheet opens a little above half height over the map, which stays usable above it. On
+ an iPad a sheet is a small centred form by default, too cramped for the key and the country list, so
+ it gets the large page size instead. The width class is read from the screen: inside a form sheet it is compact.
  */
 private struct SheetSizing: ViewModifier {
     let regularWidth: Bool
+
+    private static let partial = PresentationDetent.fraction(0.6)
 
     func body(content: Content) -> some View {
         if regularWidth {
@@ -199,9 +205,9 @@ private struct SheetSizing: ViewModifier {
             }
         } else {
             content
-                .presentationDetents([.medium, .large])
+                .presentationDetents([Self.partial, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                .presentationBackgroundInteraction(.enabled(upThrough: Self.partial))
         }
     }
 }
