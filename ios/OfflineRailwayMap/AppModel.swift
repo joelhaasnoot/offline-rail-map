@@ -66,6 +66,19 @@ final class AppModel {
     var legendContext: LegendContext?
     var styleError: String?
 
+    private struct StyleInputs: Equatable {
+        let mode: MapMode
+        let options: MapOptions
+        let packs: [InstalledPack]
+    }
+
+    /// What the style last handed to the map was built for.
+    @ObservationIgnored private var appliedStyle: StyleInputs?
+
+    private var currentStyleInputs: StyleInputs {
+        StyleInputs(mode: mode, options: options, packs: packs.installed)
+    }
+
     init() {
         let assets = MapAssets(root: Bundle.main.resourceURL!.appendingPathComponent("assets", isDirectory: true))
         styles = StyleBuilder(assets: assets)
@@ -95,17 +108,16 @@ final class AppModel {
     /// Rebuilds the style for the current view, options and packs and hands it to the map.
     func applyStyle() async {
         let styles = styles
-        let mode = mode
-        let options = options
-        let installed = packs.installed
+        let inputs = currentStyleInputs
         do {
             let json = try await Task.detached(priority: .userInitiated) {
-                try styles.build(mode: mode, options: options, packs: installed)
+                try styles.build(mode: inputs.mode, options: inputs.options, packs: inputs.packs)
             }.value
             if Task.isCancelled {
                 return
             }
             map.setStyle(json)
+            appliedStyle = inputs
         } catch {
             Self.log.error("style build failed: \(error.localizedDescription)")
             styleError = error.localizedDescription
@@ -115,6 +127,7 @@ final class AppModel {
     /// Captures what the map shows when the sheet opens, for the key's "On screen" filter.
     func captureLegendContext() async {
         legendContext = nil
+        await waitForMapToSettle()
         let styles = styles
         let mode = mode
         let options = options
@@ -126,6 +139,24 @@ final class AppModel {
             return
         }
         legendContext = map.legendContext(legendView: loaded.0, layers: loaded.1.layers, packs: packs.installed)
+    }
+
+    /**
+     Waits until the map has the style for the current view, options and packs and has drawn it.
+     Opening the key right after switching views would otherwise read the previous style, in which
+     the new view's layers are hidden. Building and drawing a new style can each take seconds on a
+     slow phone; the caps only keep the key from waiting forever.
+     */
+    private func waitForMapToSettle() async {
+        await waitUntil(timeout: .seconds(15)) { $0.appliedStyle == $0.currentStyleInputs }
+        await waitUntil(timeout: .seconds(10)) { $0.map.isIdle }
+    }
+
+    private func waitUntil(timeout: Duration, _ condition: (AppModel) -> Bool) async {
+        let deadline = ContinuousClock.now + timeout
+        while !condition(self) && ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
     }
 
     func showPack(_ pack: InstalledPack) {

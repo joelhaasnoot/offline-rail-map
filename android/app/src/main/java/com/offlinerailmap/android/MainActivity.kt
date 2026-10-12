@@ -12,6 +12,7 @@ import com.offlinerailmap.android.map.LegendData
 import com.offlinerailmap.android.ui.LegendContext
 import com.google.gson.JsonElement
 import kotlin.math.floor
+import java.util.concurrent.atomic.AtomicBoolean
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
@@ -83,8 +84,10 @@ import com.offlinerailmap.android.ui.RailChipContainer
 import com.offlinerailmap.android.ui.RailColorScheme
 import com.offlinerailmap.android.ui.SheetTab
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -157,6 +160,9 @@ fun MapScreen() {
     val available by PackStore.available.collectAsState()
     val downloads by PackStore.downloads.collectAsState()
     var styleReady by remember { mutableStateOf(false) }
+    // False from a style change or the start of a frame until MapLibre reports the map idle: style
+    // loaded, visible tiles loaded and drawn, no camera or fade transitions running.
+    val mapIdle = remember { AtomicBoolean(true) }
 
     val mapView = remember {
         MapView(context).also { view ->
@@ -182,6 +188,8 @@ fun MapScreen() {
                         m.getStyle { style -> images.addTo(style::addImage) }
                     }
                 }
+                view.addOnWillStartRenderingFrameListener { mapIdle.set(false) }
+                view.addOnDidBecomeIdleListener { mapIdle.set(true) }
                 m.addOnCameraIdleListener {
                     val pos = m.cameraPosition
                     val target = pos.target ?: return@addOnCameraIdleListener
@@ -233,6 +241,7 @@ fun MapScreen() {
             return@LaunchedEffect
         }
         val built = SystemClock.elapsedRealtime()
+        mapIdle.set(false)
         m.setStyle(Style.Builder().fromJson(json)) { style ->
             Log.i(TAG, "style built in ${built - started} ms, loaded ${SystemClock.elapsedRealtime() - built} ms later")
             styleReady = true
@@ -361,6 +370,19 @@ fun MapScreen() {
         val m = map ?: return@LaunchedEffect
         if (sheetTab == null) {
             return@LaunchedEffect
+        }
+        // Opening the key right after switching views would otherwise read the previous style, in
+        // which the new view's layers are hidden. Building and drawing a new style can each take
+        // seconds on a slow phone; the caps only keep the key from waiting forever.
+        withTimeoutOrNull(15_000) {
+            while (!styleReady) {
+                delay(50)
+            }
+        }
+        withTimeoutOrNull(10_000) {
+            while (!mapIdle.get()) {
+                delay(50)
+            }
         }
         withContext(Dispatchers.Default) {
             LegendData.view(context, mode.id)

@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class LegendTest {
     private val sep = "\u001E"
@@ -113,6 +114,20 @@ class LegendTest {
         assertEquals(listOf("(DE) Distant signal, with repeater"), signalsOnly.map { it.label })
 
         assertTrue(Legend.entries(legendView, listOf(lines, signals), gaugeState, 14, emptyMap()).isEmpty())
+    }
+
+    @Test
+    fun onScreenOperatorsMatchTheShippedLegend() {
+        val operatorView = JSONObject(File("src/main/assets/style/legend.json").readText()).getJSONObject("operator")
+        val source = operatorView.getJSONObject("sourceLayers").getJSONObject("high-railway_line_high")
+        // Tiles carry operator as a Postgres array literal; merged low-zoom lines leave it out.
+        val tileFeatures = listOf(
+            mapOf("operator" to "{ProRail}", "primary_operator" to "ProRail"),
+            mapOf("primary_operator" to "DB InfraGO AG"),
+        )
+        val keys = tileFeatures.flatMapTo(HashSet()) { props -> Legend.featureKeys(source) { props[it] } }
+        val entries = Legend.entries(operatorView, listOf(lines), emptyMap(), 14, mapOf("high-railway_line_high" to keys))
+        assertEquals(listOf("(DE) DB InfraGO AG", "(NL) ProRail"), entries.map { it.label.substringBefore(",") })
     }
 
     @Test

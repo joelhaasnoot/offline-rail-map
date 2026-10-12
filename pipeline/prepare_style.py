@@ -203,6 +203,13 @@ def prepare_legend():
             if name.split("-", 1)[0] not in DROP_SOURCES
         }
         for data in style["sourceLayers"].values():
+            # Operator lines are keyed on `operator`, which tiles carry as a Postgres array literal
+            # ("{ProRail}") that the key normalisation turns into "{}", and which the merged low-zoom
+            # lines leave out. `primary_operator` is the plain name the colour comes from, at every zoom.
+            if data.get("key") == ["operator"]:
+                data["key"] = ["primary_operator"]
+                for item in data.get("features", []):
+                    item["keys"] = [(item.get("properties") or {}).get("primary_operator") or ""]
             for item in data.get("features", []):
                 add_localized_name(item.get("properties"))
                 for variant in item.get("variants", []):
