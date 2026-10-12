@@ -232,8 +232,9 @@ fun MapScreen() {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
+    // Android 12+ lets the user pick "Approximate", which grants only coarse access; that is enough to follow.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (hasLocationPermission(context)) {
             locationWanted = true
         } else {
             Toast.makeText(context, "Location permission denied", Toast.LENGTH_SHORT).show()
@@ -332,13 +333,11 @@ fun MapScreen() {
             horizontalAlignment = Alignment.End,
         ) {
             LocationButton(active = locationTracking, onClick = {
-                val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED
-                if (granted) {
+                if (hasLocationPermission(context)) {
                     locationWanted = true
                     map?.let { m -> m.style?.let { enableLocation(context, m, it) { t -> locationTracking = t } } }
                 } else {
-                    permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    permissionLauncher.launch(LOCATION_PERMISSIONS)
                 }
             })
             Spacer(Modifier.height(12.dp))
@@ -476,6 +475,16 @@ private fun fitToPacks(map: MapLibreMap, packs: List<InstalledPack>) {
     map.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 48), 600)
 }
 
+/** Fine and coarse are asked for together, as Android 12+ expects. */
+private val LOCATION_PERMISSIONS = arrayOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_COARSE_LOCATION,
+)
+
+/** Either precise or approximate access is enough to show and follow the user's location. */
+private fun hasLocationPermission(context: android.content.Context): Boolean =
+    LOCATION_PERMISSIONS.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+
 @SuppressLint("MissingPermission")
 private fun enableLocation(
     context: android.content.Context,
@@ -483,7 +492,7 @@ private fun enableLocation(
     style: Style,
     onTrackingChanged: (Boolean) -> Unit,
 ) {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+    if (!hasLocationPermission(context)) {
         return
     }
     try {
