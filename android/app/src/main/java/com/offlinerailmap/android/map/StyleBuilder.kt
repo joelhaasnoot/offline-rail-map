@@ -124,7 +124,15 @@ object StyleBuilder {
     }
 
     /** The upstream layers that are visible for a view and options, with `global-state` resolved. */
-    class OrmLayers(val layers: List<JSONObject>, val hidden: Int, val state: Map<String, Any?>, val sprite: String, val glyphs: String)
+    class OrmLayers(
+        val layers: List<JSONObject>,
+        val hidden: Int,
+        /** Layers whose visibility did not reduce to a constant and are shown regardless. */
+        val unresolved: Int,
+        val state: Map<String, Any?>,
+        val sprite: String,
+        val glyphs: String,
+    )
 
     private var ormLayersKey: Pair<MapMode, MapOptions>? = null
     private var ormLayersCache: OrmLayers? = null
@@ -135,6 +143,13 @@ object StyleBuilder {
             return ormLayersCache!!
         }
         val (orm, _) = load(context)
+        return resolveLayers(orm, mode, options).also {
+            ormLayersKey = mode to options
+            ormLayersCache = it
+        }
+    }
+
+    internal fun resolveLayers(orm: JSONObject, mode: MapMode, options: MapOptions): OrmLayers {
         val state = globalState(orm, mode, options)
         val ormSources = orm.getJSONObject("sources")
         val vectorSources = ormSources.keys().asSequence()
@@ -142,6 +157,7 @@ object StyleBuilder {
             .toSet()
         val result = ArrayList<JSONObject>()
         var hidden = 0
+        var unresolved = 0
         val ormLayers = orm.getJSONArray("layers")
         for (i in 0 until ormLayers.length()) {
             val layer = ormLayers.getJSONObject(i)
@@ -154,6 +170,7 @@ object StyleBuilder {
             if (visibility is JSONArray) {
                 Log.w(TAG, "visibility of ${layer.optString("id")} did not reduce to a constant: $visibility")
                 layout.put("visibility", "visible")
+                unresolved++
             }
             if (layout?.optString("visibility") == "none") {
                 hidden++
@@ -173,10 +190,7 @@ object StyleBuilder {
             }
             result.add(substituted)
         }
-        return OrmLayers(result, hidden, state, orm.getString("sprite"), orm.getString("glyphs")).also {
-            ormLayersKey = mode to options
-            ormLayersCache = it
-        }
+        return OrmLayers(result, hidden, unresolved, state, orm.getString("sprite"), orm.getString("glyphs"))
     }
 
     private fun pmtilesUrl(file: File): String = "pmtiles://file://" + file.absolutePath
@@ -191,9 +205,8 @@ object StyleBuilder {
                 state[key] = defaults.getJSONObject(key).opt("default")
             }
         }
-        state["style"] = mode.id
         state.putAll(mode.globalState)
-        state.putAll(options.toGlobalState())
+        state.putAll(options.toGlobalState(mode))
         state["theme"] = "light"
         state["pitched"] = false
         state["bearing"] = 0
@@ -204,11 +217,19 @@ object StyleBuilder {
         return state
     }
 
-    /** Deep-copies [value], replacing every `["global-state", key]` with the value of that key. */
+    /**
+     * Deep-copies [value], replacing every `["global-state", key]` with the value of that key. A list
+     * value becomes a `literal`, as an array in an expression would be read as an expression.
+     */
     private fun substitute(value: Any?, state: Map<String, Any?>): Any? = when (value) {
         is JSONArray -> {
             if (value.length() == 2 && value.opt(0) == "global-state") {
-                state[value.getString(1)] ?: JSONObject.NULL
+                when (val v = state[value.getString(1)]) {
+                    null -> JSONObject.NULL
+                    is List<*> -> JSONArray().put("literal").put(JSONArray(v))
+                    is JSONArray -> JSONArray().put("literal").put(v)
+                    else -> v
+                }
             } else {
                 val arr = JSONArray()
                 for (i in 0 until value.length()) {
@@ -302,8 +323,12 @@ object StyleBuilder {
                 return if (kept.isEmpty()) fallback else finishCase(kept, fallback)
             }
             "!" -> return if (args[0] is Boolean) !(args[0] as Boolean) else rebuild()
-            "==", "!=", "<", "<=", ">", ">=", "in", "match", "coalesce" -> {
-                val allConstant = args.all { it !is JSONArray || (it.length() > 0 && it.opt(0) == "literal") }
+            "==", "!=", "<", "<=", ">", ">=", "in", "match", "coalesce", "length" -> {
+                val allConstant = args.withIndex().all { (index, arg) ->
+                    // The label lists of a match (every other argument before the fallback) are data, not expressions.
+                    op == "match" && index % 2 == 1 && index < args.size - 1 ||
+                        arg !is JSONArray || (arg.length() > 0 && arg.opt(0) == "literal")
+                }
                 if (allConstant) {
                     return try {
                         evaluate(rebuild())
@@ -495,6 +520,11 @@ object StyleBuilder {
                 evaluate(e.opt(e.length() - 1))
             }
             "coalesce" -> (1 until e.length()).asSequence().map { evaluate(e.opt(it)) }.firstOrNull { it != null }
+            "length" -> when (val v = evaluate(e.opt(1))) {
+                is JSONArray -> v.length()
+                is String -> v.length
+                else -> throw IllegalArgumentException("cannot take the length of $v")
+            }
             else -> throw IllegalArgumentException("unsupported expression operator '$op'")
         }
     }

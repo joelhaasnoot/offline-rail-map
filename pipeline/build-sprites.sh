@@ -2,23 +2,30 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Joel Haasnoot
 #
-# Build the sprite sheets from upstream OpenRailwayMap symbols plus this project's replacements in
-# pipeline/symbols (same relative paths win), then refresh the app assets with prepare_style.py.
+# Regenerate the app's style assets from the pinned upstream OpenRailwayMap-vector (upstream.sh):
+# generate upstream's style and legend, build the sprite sheets from upstream's symbols plus this
+# project's replacements in pipeline/symbols (same relative paths win), then refresh the app assets
+# with prepare_style.py.
 #
 #   pipeline/build-sprites.sh
 #
-# Requirements: martin, curl, python3 with Pillow; run pipeline/build-country.sh once first so the
-# upstream checkout exists in pipeline/work/OpenRailwayMap-vector.
+# Requirements: node, npm, martin, curl, python3 with Pillow.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PIPELINE="$ROOT/pipeline"
 WORK="$PIPELINE/work"
 ORM="$WORK/OpenRailwayMap-vector"
+source "$PIPELINE/upstream.sh"
 MERGED="$WORK/sprite-build/symbols" # Martin names the sprite after this folder
 PORT="${SPRITE_PORT:-3999}"
 
-[[ -d "$ORM/symbols" ]] || { echo "missing $ORM; run build-country.sh first" >&2; exit 1; }
+checkout_upstream "$ORM"
+
+# Upstream's generators need the yaml package (version as in upstream's proxy.Dockerfile); Node finds
+# it in work/node_modules from the checkout below.
+[[ -d "$WORK/node_modules/yaml" ]] || npm install --silent --no-save --prefix "$WORK" yaml@2.8.1
+(cd "$ORM" && node proxy/js/styles.mjs > "$WORK/style.json" && node proxy/js/legend.mjs > "$WORK/legend.json")
 
 rm -rf "$MERGED" && mkdir -p "$(dirname "$MERGED")"
 cp -R "$ORM/symbols" "$MERGED"

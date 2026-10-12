@@ -95,7 +95,42 @@ final class StyleBuilderTests: XCTestCase {
         let speed = Set(try builder.ormLayers(mode: .speed, options: MapOptions()).layers.compactMap { $0["id"]?.string })
         XCTAssertNotEqual(standard, speed)
         XCTAssertTrue(try builder.ormLayers(mode: .speed, options: MapOptions()).hidden > 0)
-        XCTAssertEqual("speed", try builder.ormLayers(mode: .speed, options: MapOptions()).state["style"])
+        XCTAssertEqual(["literal", ["speed"]], StyleBuilder.substitute(["global-state", "signals"], state: try builder.ormLayers(mode: .speed, options: MapOptions()).state))
+    }
+
+    func testListStateSelectsCategories() throws {
+        // `signals` and `pois` are lists of categories: the speed view shows speed signals only.
+        let builder = StyleBuilder(assets: Self.assets)
+        let speed = try builder.ormLayers(mode: .speed, options: MapOptions()).layers
+        let signalFilters = speed.filter { $0["source-layer"]?.string == "railway_signals" }.map { $0["filter"]?.serialized() ?? "" }
+        XCTAssertFalse(signalFilters.isEmpty)
+        XCTAssertTrue(signalFilters.contains { $0.contains(#"["literal",["speed"]]"#) })
+        XCTAssertFalse(speed.contains { ($0["id"]?.string ?? "").hasPrefix("railway_symbols") })
+        let standard = try builder.ormLayers(mode: .standard, options: MapOptions()).layers
+        XCTAssertTrue(standard.contains { ($0["id"]?.string ?? "").hasPrefix("railway_symbols") })
+        XCTAssertEqual(3, StyleBuilder.simplify(["length", ["literal", ["a", "b", "c"]]]))
+    }
+
+    func testOptionsChooseTheLineColouring() throws {
+        let builder = StyleBuilder(assets: Self.assets)
+        var loadingGauge = MapOptions()
+        loadingGauge.trackLine = "loadingGauge"
+        XCTAssertEqual("loading_gauge", try builder.ormLayers(mode: .track, options: loadingGauge).state["tracks"])
+        XCTAssertEqual("usage", try builder.ormLayers(mode: .standard, options: loadingGauge).state["tracks"])
+        var power = MapOptions()
+        power.electrificationLine = "power"
+        XCTAssertEqual("power", try builder.ormLayers(mode: .electrification, options: power).state["tracks"])
+        let gaugeIds = try builder.ormLayers(mode: .track, options: MapOptions()).layers.compactMap { $0["id"]?.string }
+        let loadingGaugeIds = try builder.ormLayers(mode: .track, options: loadingGauge).layers.compactMap { $0["id"]?.string }
+        XCTAssertNotEqual(Set(gaugeIds), Set(loadingGaugeIds))
+    }
+
+    func testViewsMatchTheWebsite() throws {
+        // prepare_style.py copies the website's views (knownStyles) into legend.json.
+        let builder = StyleBuilder(assets: Self.assets)
+        for mode in MapMode.allCases {
+            XCTAssertEqual(try builder.legendView(modeId: mode.id)["state"], .object(mode.globalState), "\(mode)")
+        }
     }
 
     func testBasemapPacksGetTheWorldMask() throws {

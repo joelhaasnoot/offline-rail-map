@@ -22,7 +22,7 @@ final class LegendTests: XCTestCase {
         {"countries":["DE"],"sourceLayers":{
           "high-railway_line_high":{"key":["usage"],"features":[
             {"legend":"Main line","type":"line","properties":{"usage":"main"},"keys":["main"]},
-            {"legend":"Standard gauge","type":"line","properties":{"gauge0":"1435"},"mapState":{"trackRailwayLine":"gauge"},"keys":[""]},
+            {"legend":"Standard gauge","type":"line","properties":{"gauge0":"1435"},"mapState":{"tracks":"gauge"},"keys":[""]},
             {"legend":"Siding","type":"line","minzoom":14,"properties":{"usage":"siding"},"keys":["siding"]},
             {"legend":"Ferry","type":"line","properties":{"feature":"ferry"},"keys":[]}
           ]},
@@ -34,7 +34,7 @@ final class LegendTests: XCTestCase {
         }}
         """)
 
-    private let gaugeState: [String: JSON] = ["trackRailwayLine": "gauge"]
+    private let gaugeState: [String: JSON] = ["tracks": "gauge"]
 
     func testKeyPartBehavesLikeJavaScriptString() {
         XCTAssertEqual("", Legend.keyPart(nil))
@@ -67,7 +67,7 @@ final class LegendTests: XCTestCase {
         XCTAssertEqual(["Main line", "Standard gauge", "Ferry"], entries.map(\.label))
 
         let loadingGauge = Legend.entries(
-            legendView: legendView, layers: [lines], state: ["trackRailwayLine": "loadingGauge"], zoom: 12, inView: nil
+            legendView: legendView, layers: [lines], state: ["tracks": "loading_gauge"], zoom: 12, inView: nil
         )
         XCTAssertFalse(loadingGauge.contains { $0.label == "Standard gauge" })
 

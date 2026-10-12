@@ -35,6 +35,7 @@ RETURN (
         usage,
         service,
         highspeed,
+        preserved,
         tunnel,
         bridge,
         name,
@@ -71,7 +72,10 @@ RETURN (
         operator_bright,
         primary_operator,
         owner,
-        route_count
+        route_count,
+        passenger_lines,
+        rack,
+        radio
       FROM railway_line_view
       WHERE
         way && ST_TileEnvelope(z, x, y)
@@ -143,7 +147,9 @@ RETURN (
         loading_gauge,
         operator_color,
         primary_operator,
-        route_count
+        route_count,
+        passenger_lines,
+        radio
       FROM railway_line_view
       WHERE
         way && ST_TileEnvelope(z, x, y)
@@ -175,7 +181,8 @@ RETURN (
         speed_label, train_protection_rank, train_protection, train_protection_construction_rank,
         train_protection_construction, electrification_state, voltage, frequency, maximum_current,
         future_voltage, future_frequency, future_maximum_current, gauges, gaugeint0, gauge0, gaugeint1,
-        gauge1, gaugeint2, gauge2, loading_gauge, operator_color, primary_operator, route_count
+        gauge1, gaugeint2, gauge2, loading_gauge, operator_color, primary_operator, route_count, passenger_lines,
+        radio
       ORDER BY
         coalesce(layer, 0),
         rank NULLS LAST,
