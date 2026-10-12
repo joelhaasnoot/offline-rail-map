@@ -83,6 +83,39 @@ evaluates every layer's `visibility` expression to a constant and drops hidden l
 handing the style to the map. Each installed country pack gets its own copy of the sources and
 layers, so several countries can be shown at once.
 
+## Changes to upstream
+
+The map should look like the website, so changes to OpenRailwayMap's style and tiles are kept small,
+and each is listed here. The code comments where each change is made explain why.
+
+Tiles (`pipeline/sql/offline_tiles.sql`, `build-country.sh`, `trim_zooms.py`):
+
+- Below zoom 10, `railway_line_high` merges ways that are drawn the same into one feature per tile.
+- `railway_line_high` carries each way's OSM `layer`, for the bridge levels below.
+- Layers that start at zoom 17 are baked into the deepest pack zoom, and every layer is baked only
+  at the zooms the style draws it at.
+
+Style (`pipeline/prepare_style.py`, at generation):
+
+- The OpenHistoricalMap and terrain sources are dropped; tile sources point at the installed packs.
+- Features MapLibre Native lacks are rewritten: `interpolate-hcl`, `icon-overlap`/`text-overlap`,
+  CSS Color 4 `hsl()`, and per-feature `line-dasharray` and `text-font` (the layer is split into one
+  layer per value).
+- Track numbers are shown in the Train protection view too, placed after the signals so they fill
+  the gaps between them.
+- Platforms are drawn under the railway lines, a backport of upstream's "Render platforms below
+  railway lines" (#1084).
+- Bridges hide what passes under them: each gets a solid mask under its railing, and bridges on OSM
+  `layer` 2 and up are drawn in a second pass over the lower ones, so at a crossing like Berlin
+  Gleisdreieck the upper line visibly runs over the lower one.
+
+Style (`StyleBuilder`, at runtime): `global-state` is substituted, see above.
+
+Key (`prepare_style.py`): the route view is left out, operator lines are keyed on
+`primary_operator`, and station samples get a `localized_name`.
+
+Symbols (`pipeline/symbols/`): the "unknown signal" icons are replaced, see `INSTALL.md`.
+
 ## License
 
 The whole project is licensed under the **GNU General Public License v3.0 or later** (see
