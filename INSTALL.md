@@ -6,7 +6,8 @@ package an Android or iOS release. See the [README](README.md) for what the proj
 ## Country packs
 
 Requirements on the build machine: Docker, `osmium`, `martin`, `pmtiles`, `psql`, Python 3 with
-Pillow and Java 21 (for Planetiler). Node.js is only needed to regenerate the app's style assets.
+Pillow and Java 21 (for Planetiler). Node.js and npm are only needed to regenerate the app's style
+assets.
 
 ```bash
 pipeline/build-country.sh netherlands                      # railway + basemap pack
@@ -30,14 +31,29 @@ pipeline/build-all.sh --dry-run                # show the plan without building
 Upload `pipeline/out/` to any static host (S3/R2/GitHub Releases/a web server) and point the app
 at `<base-url>/manifest.json`.
 
-The first run clones `hiddewie/OpenRailwayMap-vector` into `pipeline/work/`. Regenerate the app's
-style assets after upstream style changes with:
+### Upstream version
 
-```bash
-cd pipeline/work/OpenRailwayMap-vector && node proxy/js/styles.mjs > ../style.json && cd ../../..
-pipeline/build-sprites.sh                      # sprite sheets, then prepare_style.py
-node pipeline/composed_image_golden.mjs        # refresh the composed icon test data
-```
+Packs and the app's style assets are built from `hiddewie/OpenRailwayMap-vector` at the commit
+pinned as `ORM_REF` in `pipeline/upstream.sh`. `build-country.sh` and `build-sprites.sh` clone it
+into `pipeline/work/OpenRailwayMap-vector` and check that commit out, so an existing checkout moves
+along with the pin. The style, legend and sprites committed under `android/app/src/main/assets` must
+match the tiles in the packs, so to upgrade:
+
+1. Set `ORM_REF` in `pipeline/upstream.sh` to the new commit.
+2. Check the changes to upstream listed in the README still apply; in particular compare upstream's
+   `railway_line_high` in `import/sql/tile_views.sql` with `pipeline/sql/offline_tiles.sql`, and
+   the website's views (`knownStyles` in `proxy/js/ui.js`) with `MapMode` in both apps.
+3. Regenerate the app's style assets:
+
+   ```bash
+   pipeline/build-sprites.sh                      # upstream style + legend, sprite sheets, then prepare_style.py
+   node pipeline/composed_image_golden.mjs        # refresh the composed icon test data
+   ```
+
+4. Run both apps' unit tests and rebuild every pack (`pipeline/build-all.sh`) before publishing the
+   app or the packs: old packs do not match the new style.
+
+Set `ORM_REF` in the environment to try another commit or branch without changing the pin.
 
 `build-sprites.sh` renders upstream's symbols with this project's replacements from
 `pipeline/symbols/` on top. The only replacements so far are the "unknown signal" icons: a signal

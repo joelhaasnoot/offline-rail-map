@@ -259,9 +259,8 @@ public final class StyleBuilder: @unchecked Sendable {
         for (key, definition) in orm["state"]?.object ?? [:] {
             state[key] = definition["default"] ?? .null
         }
-        state["style"] = .string(mode.id)
         state.merge(mode.globalState) { _, new in new }
-        state.merge(options.toGlobalState()) { _, new in new }
+        state.merge(options.toGlobalState(mode: mode)) { _, new in new }
         state["theme"] = "light"
         state["pitched"] = false
         state["bearing"] = 0
@@ -272,12 +271,17 @@ public final class StyleBuilder: @unchecked Sendable {
         return state
     }
 
-    /// Replaces every `["global-state", key]` with the value of that key.
+    /// Replaces every `["global-state", key]` with the value of that key. A list value becomes a
+    /// `literal`, as an array in an expression would be read as an expression.
     static func substitute(_ value: JSON, state: [String: JSON]) -> JSON {
         switch value {
         case .array(let items):
             if items.count == 2, items[0] == "global-state" {
-                return items[1].string.flatMap { state[$0] } ?? .null
+                let substituted = items[1].string.flatMap { state[$0] } ?? .null
+                if case .array = substituted {
+                    return ["literal", substituted]
+                }
+                return substituted
             }
             return .array(items.map { substitute($0, state: state) })
         case .object(let values):
@@ -364,7 +368,7 @@ public final class StyleBuilder: @unchecked Sendable {
                 return .bool(!b)
             }
             return rebuilt
-        case "==", "!=", "<", "<=", ">", ">=", "in", "match", "coalesce":
+        case "==", "!=", "<", "<=", ">", ">=", "in", "match", "coalesce", "length":
             let allConstant = args.enumerated().allSatisfy { index, arg in
                 // The label lists of a match (every other argument before the fallback) are data, not expressions.
                 if op == "match" && index % 2 == 1 && index < args.count - 1 {
@@ -461,6 +465,15 @@ public final class StyleBuilder: @unchecked Sendable {
                 i += 2
             }
             return try arg(items.count - 1)
+        case "length":
+            switch try arg(1) {
+            case .array(let values):
+                return .number(Double(values.count))
+            case .string(let text):
+                return .number(Double(text.count))
+            default:
+                throw UnsupportedExpression()
+            }
         case "coalesce":
             for i in 1..<items.count {
                 let value = try arg(i)
