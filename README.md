@@ -108,8 +108,8 @@ Style (`pipeline/prepare_style.py`, at generation):
 - Features MapLibre Native lacks are rewritten: `interpolate-hcl`, `icon-overlap`/`text-overlap`,
   CSS Color 4 `hsl()`, and per-feature `line-dasharray` and `text-font` (the layer is split into one
   layer per value).
-- Track numbers are shown in the Train protection view too, placed after the signals so they fill
-  the gaps between them.
+- Track numbers are shown in every view, not only Infrastructure, placed under each view's line
+  labels and signals so they fill the gaps between them.
 - Bridges hide what passes under them: each gets a solid mask under its railing, and bridges on OSM
   `layer` 2 and up are drawn in a second pass over the lower ones, so at a crossing like Berlin
   Gleisdreieck the upper line visibly runs over the lower one.
