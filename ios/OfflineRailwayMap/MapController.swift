@@ -17,6 +17,10 @@ final class MapController {
     private(set) var isReady = false
     var locationDenied = false
 
+    /// False from a style change or the start of a frame until MapLibre reports the map idle: style
+    /// loaded, visible tiles loaded and drawn, no camera or fade transitions running.
+    @ObservationIgnored private(set) var isIdle = true
+
     /// Camera target requested via a geo: link, applied once the map exists.
     var pendingCamera: SavedCamera? {
         didSet {
@@ -67,6 +71,7 @@ final class MapController {
             return
         }
         styleJSON = json
+        isIdle = false
         mapView?.styleJSON = json
     }
 
@@ -164,6 +169,14 @@ final class MapController {
         tracking = mode != .none
     }
 
+    fileprivate func renderingStarted() {
+        isIdle = false
+    }
+
+    fileprivate func becameIdle() {
+        isIdle = true
+    }
+
     fileprivate func locationFailed(_ error: Error) {
         tracking = false
         if (error as? CLError)?.code == .denied {
@@ -197,6 +210,18 @@ private final class MapDelegate: NSObject, MLNMapViewDelegate {
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         MainActor.assumeIsolated {
             controller?.cameraDidSettle(mapView, moved: false)
+        }
+    }
+
+    func mapViewWillStartRenderingFrame(_ mapView: MLNMapView) {
+        MainActor.assumeIsolated {
+            controller?.renderingStarted()
+        }
+    }
+
+    func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
+        MainActor.assumeIsolated {
+            controller?.becameIdle()
         }
     }
 
