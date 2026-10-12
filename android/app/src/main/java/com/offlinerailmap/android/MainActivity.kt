@@ -372,9 +372,15 @@ fun MapScreen() {
             return@LaunchedEffect
         }
         // Opening the key right after switching views would otherwise read the previous style, in
-        // which the new view's layers are hidden. Give up after a few seconds and read what is drawn.
-        withTimeoutOrNull(3_000) {
-            while (!(styleReady && mapIdle.get())) {
+        // which the new view's layers are hidden. Building and drawing a new style can each take
+        // seconds on a slow phone; the caps only keep the key from waiting forever.
+        withTimeoutOrNull(15_000) {
+            while (!styleReady) {
+                delay(50)
+            }
+        }
+        withTimeoutOrNull(10_000) {
+            while (!mapIdle.get()) {
                 delay(50)
             }
         }

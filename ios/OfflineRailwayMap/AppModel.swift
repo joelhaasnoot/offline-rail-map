@@ -144,14 +144,17 @@ final class AppModel {
     /**
      Waits until the map has the style for the current view, options and packs and has drawn it.
      Opening the key right after switching views would otherwise read the previous style, in which
-     the new view's layers are hidden. Gives up after a few seconds and reads whatever is drawn.
+     the new view's layers are hidden. Building and drawing a new style can each take seconds on a
+     slow phone; the caps only keep the key from waiting forever.
      */
     private func waitForMapToSettle() async {
-        let deadline = ContinuousClock.now + .seconds(3)
-        while ContinuousClock.now < deadline {
-            if appliedStyle == currentStyleInputs && map.isIdle {
-                return
-            }
+        await waitUntil(timeout: .seconds(15)) { $0.appliedStyle == $0.currentStyleInputs }
+        await waitUntil(timeout: .seconds(10)) { $0.map.isIdle }
+    }
+
+    private func waitUntil(timeout: Duration, _ condition: (AppModel) -> Bool) async {
+        let deadline = ContinuousClock.now + timeout
+        while !condition(self) && ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(50))
         }
     }
