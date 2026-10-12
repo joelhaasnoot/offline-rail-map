@@ -93,8 +93,10 @@ public struct MapOptions: Hashable, Sendable {
     public var showRazed = false
     /// voltageFrequency | maximumCurrent | power
     public var electrificationLine = "voltageFrequency"
-    /// gauge | loadingGauge | trackClass
+    /// gauge | loadingGauge | trackClass | passengerLines
     public var trackLine = "gauge"
+    /// trainProtection | radio
+    public var signalsLine = "trainProtection"
     /// label | name | none
     public var stationLowZoomLabel = "label"
 
@@ -126,8 +128,17 @@ public struct MapOptions: Hashable, Sendable {
                 state["tracks"] = "loading_gauge"
             case "trackClass":
                 state["tracks"] = "track_class"
+            case "passengerLines":
+                state["tracks"] = "passenger_lines"
             default:
                 state["tracks"] = "gauge"
+            }
+        case .signals:
+            switch signalsLine {
+            case "radio":
+                state["tracks"] = "radio"
+            default:
+                state["tracks"] = "train_protection"
             }
         default:
             break
@@ -142,6 +153,7 @@ public struct MapOptions: Hashable, Sendable {
         prefs.showRazed = showRazed
         prefs.electrificationLine = electrificationLine
         prefs.trackLine = trackLine
+        prefs.signalsLine = signalsLine
         prefs.stationLowZoomLabel = stationLowZoomLabel
     }
 
@@ -153,6 +165,7 @@ public struct MapOptions: Hashable, Sendable {
         options.showRazed = prefs.showRazed
         options.electrificationLine = prefs.electrificationLine
         options.trackLine = prefs.trackLine
+        options.signalsLine = prefs.signalsLine
         options.stationLowZoomLabel = prefs.stationLowZoomLabel
         return options
     }

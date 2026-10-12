@@ -98,6 +98,31 @@ class StyleBuilderTest {
         assertEquals("power", StyleBuilder.resolveLayers(orm, MapMode.ELECTRIFICATION, MapOptions(electrificationLine = "power")).state["tracks"])
         assertEquals("usage", StyleBuilder.resolveLayers(orm, MapMode.STANDARD, MapOptions(trackLine = "loadingGauge")).state["tracks"])
         assertNotEquals(layerIds(MapMode.TRACK), layerIds(MapMode.TRACK, MapOptions(trackLine = "loadingGauge")))
+        assertEquals("passenger_lines", StyleBuilder.resolveLayers(orm, MapMode.TRACK, MapOptions(trackLine = "passengerLines")).state["tracks"])
+        assertEquals("train_protection", StyleBuilder.resolveLayers(orm, MapMode.SIGNALS, MapOptions()).state["tracks"])
+        assertEquals("radio", StyleBuilder.resolveLayers(orm, MapMode.SIGNALS, MapOptions(signalsLine = "radio")).state["tracks"])
+        assertEquals("speed", StyleBuilder.resolveLayers(orm, MapMode.SPEED, MapOptions(signalsLine = "radio")).state["tracks"])
+    }
+
+    @Test
+    fun keyFollowsTheLineColouring() {
+        val legend = JSONObject(File("src/main/assets/style/legend.json").readText())
+        fun labels(mode: MapMode, options: MapOptions, zoom: Int): List<String> {
+            val resolved = StyleBuilder.resolveLayers(orm, mode, options)
+            return Legend.entries(legend.getJSONObject(mode.id), resolved.layers, resolved.state, zoom, null).map { it.label }
+        }
+        for (zoom in listOf(6, 14)) {
+            val protection = labels(MapMode.SIGNALS, MapOptions(), zoom)
+            val radio = labels(MapMode.SIGNALS, MapOptions(signalsLine = "radio"), zoom)
+            assertTrue("$zoom", protection.any { it.startsWith("European Train Control System (ETCS)") })
+            assertFalse("$zoom", protection.contains("GSM-R"))
+            assertTrue("$zoom", radio.contains("GSM-R"))
+            assertFalse("$zoom", radio.any { it.startsWith("European Train Control System (ETCS)") })
+
+            val tracks = labels(MapMode.TRACK, MapOptions(trackLine = "passengerLines"), zoom)
+            assertTrue("$zoom", tracks.contains("2 lines"))
+            assertFalse("$zoom", labels(MapMode.TRACK, MapOptions(), zoom).contains("2 lines"))
+        }
     }
 
     @Test

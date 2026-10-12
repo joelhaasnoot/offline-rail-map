@@ -75,8 +75,10 @@ data class MapOptions(
     val showRazed: Boolean = false,
     /** voltageFrequency | maximumCurrent | power */
     val electrificationLine: String = "voltageFrequency",
-    /** gauge | loadingGauge | trackClass */
+    /** gauge | loadingGauge | trackClass | passengerLines */
     val trackLine: String = "gauge",
+    /** trainProtection | radio */
+    val signalsLine: String = "trainProtection",
     /** label | name | none */
     val stationLowZoomLabel: String = "label",
 ) {
@@ -87,6 +89,7 @@ data class MapOptions(
         Prefs.showRazed = showRazed
         Prefs.electrificationLine = electrificationLine
         Prefs.trackLine = trackLine
+        Prefs.signalsLine = signalsLine
         Prefs.stationLowZoomLabel = stationLowZoomLabel
     }
 
@@ -109,7 +112,12 @@ data class MapOptions(
             MapMode.TRACK -> state["tracks"] = when (trackLine) {
                 "loadingGauge" -> "loading_gauge"
                 "trackClass" -> "track_class"
+                "passengerLines" -> "passenger_lines"
                 else -> "gauge"
+            }
+            MapMode.SIGNALS -> state["tracks"] = when (signalsLine) {
+                "radio" -> "radio"
+                else -> "train_protection"
             }
             else -> {}
         }
@@ -124,6 +132,7 @@ data class MapOptions(
             showRazed = Prefs.showRazed,
             electrificationLine = Prefs.electrificationLine,
             trackLine = Prefs.trackLine,
+            signalsLine = Prefs.signalsLine,
             stationLowZoomLabel = Prefs.stationLowZoomLabel,
         )
     }
