@@ -174,7 +174,9 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
                     TextButton(onClick = { PackStore.delete(pack.id) }) { Text("Delete") }
                     OutlinedButton(onClick = { onShow(installed) }) { Text("Show") }
                 }
-                else -> Button(onClick = { PackStore.download(pack) }) { Text("Download") }
+                else -> Button(onClick = { PackStore.download(pack) }) {
+                    Text(if (state is DownloadState.Failed && state.resumable) "Resume" else "Download")
+                }
             }
         }
         when (state) {
@@ -191,12 +193,17 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        (if (installed != null) "Update failed: " else "Failed: ") + state.message,
+                        when {
+                            state.resumable ->
+                                (if (installed != null) "Update stopped at " else "Stopped at ") +
+                                    "${formatBytes(state.bytesDone)} of ${formatBytes(pack.totalBytes)}: ${state.message}"
+                            else -> (if (installed != null) "Update failed: " else "Failed: ") + state.message
+                        },
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { PackStore.dismissError(pack.id) }) { Text("Dismiss") }
+                    TextButton(onClick = { PackStore.dismissError(pack.id) }) { Text(if (state.resumable) "Discard" else "Dismiss") }
                 }
             }
             null -> {}
@@ -219,7 +226,9 @@ private fun PackRow(pack: PackInfo, installed: InstalledPack?, state: DownloadSt
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = { PackStore.download(pack) }) { Text("Update") }
+                Button(onClick = { PackStore.download(pack) }) {
+                    Text(if (state is DownloadState.Failed && state.resumable) "Resume" else "Update")
+                }
             }
         }
     }

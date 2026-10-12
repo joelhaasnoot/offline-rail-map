@@ -103,13 +103,19 @@ fun CoverageBanner(coverage: Coverage.Missing, downloadState: DownloadState?, on
                     }
                     is DownloadState.Failed -> {
                         Text(
-                            "Download failed: ${downloadState.message}",
+                            if (downloadState.resumable) {
+                                "Download stopped at ${formatBytes(downloadState.bytesDone)}: ${downloadState.message}"
+                            } else {
+                                "Download failed: ${downloadState.message}"
+                            },
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-                            TextButton(onClick = { PackStore.dismissError(pack.id) }) { Text("Dismiss") }
-                            Button(onClick = { PackStore.download(pack) }) { Text("Retry") }
+                            TextButton(onClick = { PackStore.dismissError(pack.id) }) {
+                                Text(if (downloadState.resumable) "Discard" else "Dismiss")
+                            }
+                            Button(onClick = { PackStore.download(pack) }) { Text(if (downloadState.resumable) "Resume" else "Retry") }
                         }
                     }
                     null -> Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
