@@ -136,6 +136,31 @@ def patch_for_native(style):
     style["layers"] = layers
 
 
+def add_signal_track_numbers(style):
+    """Show track numbers (track_ref) in the Train protection view too, not only in Infrastructure.
+
+    Upstream gates the track number layer on `stations == "station"`. Rather than widen that layer,
+    add a copy for `tracks == "train_protection"` beneath the signal layers: symbols are placed top
+    layer first, so signal icons and their labels claim their space and the track numbers fill the
+    gaps along the line instead of covering them. Closer label spacing gives each track more
+    candidate spots between the signals of a busy station throat.
+    """
+    layers = style["layers"]
+    ids = [l["id"] for l in layers]
+    if "railway_text_track_numbers" not in ids or "signals_railway_symbols_outline_outline" not in ids:
+        print("WARNING: track number or signal layers not found, track numbers stay Infrastructure-only")
+        return
+    original = layers[ids.index("railway_text_track_numbers")]
+    copy = json.loads(json.dumps(original))
+    copy["id"] = "railway_text_track_numbers_train_protection"
+    copy["layout"]["visibility"] = [
+        "case", ["<", ["global-state", "date"], 2026], "none",
+        ["==", ["global-state", "tracks"], "train_protection"], "visible", "none",
+    ]
+    copy["layout"]["symbol-spacing"] = 150
+    layers.insert(ids.index("signals_railway_symbols_outline_outline"), copy)
+
+
 def prepare_style():
     style = json.load(open(os.path.join(WORK, "style.json"), encoding="utf-8"))
     before = len(style["layers"])
@@ -148,6 +173,7 @@ def prepare_style():
             src.pop("metadata", None)
             src["attribution"] = ATTRIBUTION
     patch_for_native(style)
+    add_signal_track_numbers(style)
     style["sprite"] = "asset://sprites/symbols"
     style["glyphs"] = "asset://font/{fontstack}/{range}.pbf"
     style["name"] = "OpenRailwayMap (offline)"
