@@ -29,16 +29,16 @@ struct CoverageBanner: View {
                             packs.cancel(id: pack.id)
                         }
                     }
-                case .failed(let message):
-                    Text("Download failed: \(message)")
+                case .failed(let message, let bytesDone):
+                    Text(bytesDone > 0 ? "Download stopped at \(formatBytes(bytesDone)): \(message)" : "Download failed: \(message)")
                         .font(.footnote)
                         .foregroundStyle(.red)
                     HStack {
                         Spacer()
-                        Button("Dismiss") {
+                        Button(bytesDone > 0 ? "Discard" : "Dismiss") {
                             packs.dismissError(id: pack.id)
                         }
-                        Button("Retry") {
+                        Button(bytesDone > 0 ? "Resume" : "Retry") {
                             packs.download(pack)
                         }
                         .buttonStyle(.borderedProminent)

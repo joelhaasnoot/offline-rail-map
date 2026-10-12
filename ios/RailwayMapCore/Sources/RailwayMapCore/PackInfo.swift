@@ -225,13 +225,22 @@ public struct InstalledPack: Hashable, Sendable, Identifiable {
 
 public enum DownloadState: Hashable, Sendable {
     case running(bytesDone: Int64, bytesTotal: Int64, stage: String)
-    case failed(message: String)
+    /// `bytesDone` bytes were kept; downloading again continues from there.
+    case failed(message: String, bytesDone: Int64 = 0)
 
     public var fraction: Double {
         guard case .running(let done, let total, _) = self, total > 0 else {
             return 0
         }
         return min(max(Double(done) / Double(total), 0), 1)
+    }
+
+    /// A failed download that kept data to continue from.
+    public var isResumable: Bool {
+        if case .failed(_, let bytes) = self {
+            return bytes > 0
+        }
+        return false
     }
 
     public var isRunning: Bool {

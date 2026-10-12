@@ -6,6 +6,7 @@ import SwiftUI
 
 @main
 struct OfflineRailwayMapApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
 
     var body: some Scene {
@@ -18,5 +19,21 @@ struct OfflineRailwayMapApp: App {
                     }
                 }
         }
+    }
+}
+
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    /// iOS woke the app because pack downloads finished in the background. The session itself is
+    /// created with the app model, which picks up the finished files.
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard identifier == PackStore.backgroundSessionIdentifier else {
+            completionHandler()
+            return
+        }
+        PackStore.handleBackgroundEvents(completion: completionHandler)
     }
 }

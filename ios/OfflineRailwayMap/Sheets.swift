@@ -129,7 +129,7 @@ private struct PackRow: View {
                     }
                     .buttonStyle(.bordered)
                 } else {
-                    Button("Download") {
+                    Button(state?.isResumable == true ? "Resume" : "Download") {
                         packs.download(pack)
                     }
                     .buttonStyle(.borderedProminent)
@@ -140,13 +140,19 @@ private struct PackRow: View {
                 ProgressView(value: state?.fraction ?? 0)
                 Text("\(installed != nil ? "Updating " : "")\(stage): \(formatBytes(done)) of \(formatBytes(total))")
                     .font(.caption2)
-            case .failed(let message):
+            case .failed(let message, let bytesDone):
                 HStack {
-                    Text("\(installed != nil ? "Update failed" : "Failed"): \(message)")
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                    Group {
+                        if bytesDone > 0 {
+                            Text("\(installed != nil ? "Update stopped" : "Stopped") at \(formatBytes(bytesDone)) of \(formatBytes(pack.totalBytes)): \(message)")
+                        } else {
+                            Text("\(installed != nil ? "Update failed" : "Failed"): \(message)")
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.red)
                     Spacer()
-                    Button("Dismiss") {
+                    Button(bytesDone > 0 ? "Discard" : "Dismiss") {
                         packs.dismissError(id: pack.id)
                     }
                 }
@@ -159,7 +165,7 @@ private struct PackRow: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.orange)
                     Spacer()
-                    Button("Update") {
+                    Button(state?.isResumable == true ? "Resume" : "Update") {
                         packs.download(pack)
                     }
                     .buttonStyle(.borderedProminent)
