@@ -161,6 +161,89 @@ def add_signal_track_numbers(style):
     layers.insert(ids.index("signals_railway_symbols_outline_outline"), copy)
 
 
+# --- Crossing tracks ----------------------------------------------------------------------------
+# Where tracks cross at different heights the map should show which one is on top.
+
+PLATFORM_LAYERS = ["railway_platforms_polygon", "railway_platforms_polygon_outline", "railway_platforms_line",
+                   "railway_platforms_edges"]
+
+
+def platforms_below_lines(layers):
+    """Draw platforms under the railway lines, as upstream does since "Render platforms below railway
+    lines" (#1084); drawn over them, a platform hides the tracks that cross above the station."""
+    platforms = [l for l in layers if l["id"] in PLATFORM_LAYERS]
+    if len(platforms) != len(PLATFORM_LAYERS):
+        sys.exit(f"platform layers not found: {set(PLATFORM_LAYERS) - {l['id'] for l in platforms}}")
+    rest = [l for l in layers if l["id"] not in PLATFORM_LAYERS]
+    after = max(i for i, l in enumerate(rest) if l["id"].startswith("railway_grouped_station"))
+    return rest[:after + 1] + platforms + rest[after + 1:]
+
+
+UPPER_LAYER = 2  # OSM `layer` from which a bridge is drawn as the upper deck
+
+
+def outer_width(width, gap):
+    """Total width of a line drawn with line-width `width` and line-gap-width `gap`."""
+    if isinstance(width, (int, float)):
+        return gap + 2 * width
+    if width[0] != "interpolate" or width[2] != ["zoom"]:
+        sys.exit(f"cannot widen line-width {json.dumps(width)[:120]}")
+    stops = width[3:]
+    out = width[:3]
+    for i in range(0, len(stops), 2):
+        out += [stops[i], ["+", gap, ["*", 2, stops[i + 1]]]]
+    return out
+
+
+def bridge_levels(layers):
+    """Make bridges hide what passes under them.
+
+    Upstream draws a bridge as a railing and a casing, both hollow lines either side of the track, so
+    the tracks underneath show straight through it, and two bridges crossing (one on OSM layer 1, the
+    other on layer 2) look the same whichever is on top. Here every bridge gets a solid mask in the
+    casing colour under its railing, which interrupts the tracks and platforms below it, and the
+    bridges of `layer` >= UPPER_LAYER are drawn in a second pass (mask, railing, casing, fill) over
+    the lower ones. Tiles without `layer` (packs built before it was added) draw everything in the
+    first pass.
+    """
+    idx = [i for i, l in enumerate(layers) if "_bridge_" in l["id"]]
+    first, last = idx[0], idx[-1]
+    if idx != list(range(first, last + 1)):
+        sys.exit("bridge layers are not one block")
+    block = layers[first:last + 1]
+    by_id = {l["id"]: l for l in block}
+    level = ["coalesce", ["get", "layer"], 0]
+
+    def at_level(layer, condition, suffix):
+        copy = json.loads(json.dumps(layer))
+        copy["id"] += suffix
+        copy["filter"] = and_filter(layer.get("filter"), condition)
+        return copy
+
+    def mask(railing, condition, suffix):
+        casing = by_id[railing["id"].replace("_bridge_railing", "_bridge_casing")]
+        copy = at_level(railing, condition, suffix)
+        copy["id"] = railing["id"].replace("_bridge_railing", "_bridge_mask") + suffix
+        copy["layout"]["line-cap"] = "butt"
+        copy["paint"] = {
+            "line-color": casing["paint"]["line-color"],
+            "line-width": outer_width(railing["paint"]["line-width"], railing["paint"]["line-gap-width"]),
+        }
+        return copy
+
+    high = [l for l in block if l.get("source-layer") == "railway_line_high"]
+    railings = [l for l in high if l["id"].endswith("_bridge_railing")]
+    passes = []
+    for condition, suffix, members in (
+        (["<", level, UPPER_LAYER], "", block),
+        ([">=", level, UPPER_LAYER], "__upper", high),
+    ):
+        passes += [mask(r, condition, suffix) for r in railings]
+        passes += [at_level(l, condition, suffix) if l in high else l for l in members]
+    print(f"bridge levels: {len(block)} -> {len(passes)} layers")
+    return layers[:first] + passes + layers[last + 1:]
+
+
 def prepare_style():
     style = json.load(open(os.path.join(WORK, "style.json"), encoding="utf-8"))
     before = len(style["layers"])
@@ -174,6 +257,7 @@ def prepare_style():
             src["attribution"] = ATTRIBUTION
     patch_for_native(style)
     add_signal_track_numbers(style)
+    style["layers"] = bridge_levels(platforms_below_lines(style["layers"]))
     style["sprite"] = "asset://sprites/symbols"
     style["glyphs"] = "asset://font/{fontstack}/{range}.pbf"
     style["name"] = "OpenRailwayMap (offline)"
