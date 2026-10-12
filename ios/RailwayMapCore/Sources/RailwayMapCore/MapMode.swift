@@ -4,8 +4,9 @@
 import Foundation
 
 /**
- The map "styles" of the OpenRailwayMap web app. Each one is a set of global-state values
- that the (single) upstream style reacts to; see `knownStyles` in the web UI.
+ The map views of the OpenRailwayMap web app. Each one is a set of global-state values that the
+ (single) upstream style reacts to: `knownStyles` in the web UI, which prepare_style.py copies into
+ legend.json for the tests to compare with. `pois` and `signals` are lists of categories.
  */
 public enum MapMode: String, CaseIterable, Identifiable, Sendable {
     case standard
@@ -44,39 +45,41 @@ public enum MapMode: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .standard:
             return [
-                "tracks": "usage", "stations": "station", "pois": "standard", "turntables": "plain",
+                "tracks": "usage", "stations": "station",
+                "pois": ["radio", "facility", "equipment", "level_crossing", "train_protection"],
                 "platforms": "plain", "substations": "none", "boxes": "none", "catenaries": "none",
-                "switches": "plain", "signals": "none",
+                "switches": "plain", "signals": [],
             ]
         case .speed:
             return [
-                "tracks": "speed", "stations": "none", "pois": "none", "turntables": "none",
+                "tracks": "speed", "stations": "none", "pois": [],
                 "platforms": "none", "substations": "none", "boxes": "none", "catenaries": "none",
-                "switches": "none", "signals": "speed",
+                "switches": "none", "signals": ["speed"],
             ]
         case .signals:
             return [
-                "tracks": "train_protection", "stations": "none", "pois": "signals", "turntables": "none",
+                "tracks": "train_protection", "stations": "none", "pois": ["vacancy_detection", "train_protection"],
                 "platforms": "none", "substations": "none", "boxes": "plain", "catenaries": "none",
-                "switches": "none", "signals": "signals",
+                "switches": "none",
+                "signals": ["main", "distant", "train_protection", "station", "radio", "shunting", "other"],
             ]
         case .electrification:
             return [
-                "tracks": "electrification", "stations": "none", "pois": "electrification", "turntables": "none",
+                "tracks": "voltage_frequency", "stations": "none", "pois": ["electrical_equipment"],
                 "platforms": "none", "substations": "plain", "boxes": "none", "catenaries": "plain",
-                "switches": "none", "signals": "electrification",
+                "switches": "none", "signals": ["electricity"],
             ]
         case .track:
             return [
-                "tracks": "track", "stations": "none", "pois": "none", "turntables": "none",
+                "tracks": "gauge", "stations": "none", "pois": [],
                 "platforms": "none", "substations": "none", "boxes": "none", "catenaries": "none",
-                "switches": "none", "signals": "none",
+                "switches": "none", "signals": [],
             ]
         case .operator:
             return [
-                "tracks": "operator", "stations": "operator", "pois": "operator", "turntables": "none",
+                "tracks": "operator", "stations": "operator", "pois": ["operator"],
                 "platforms": "none", "substations": "none", "boxes": "operator", "catenaries": "none",
-                "switches": "none", "signals": "none",
+                "switches": "none", "signals": [],
             ]
         }
     }
@@ -97,16 +100,39 @@ public struct MapOptions: Hashable, Sendable {
 
     public init() {}
 
-    public func toGlobalState() -> [String: JSON] {
-        [
+    /// The global state these options set in `mode`, on top of the mode's own.
+    public func toGlobalState(mode: MapMode) -> [String: JSON] {
+        var state: [String: JSON] = [
             "showConstructionInfrastructure": .bool(showConstruction),
             "showProposedInfrastructure": .bool(showProposed),
             "showAbandonedInfrastructure": .bool(showAbandoned),
             "showRazedInfrastructure": .bool(showRazed),
-            "electrificationRailwayLine": .string(electrificationLine),
-            "trackRailwayLine": .string(trackLine),
             "stationLowZoomLabel": .string(stationLowZoomLabel),
         ]
+        // The line colouring of these views; the web app offers them as `tracks` values.
+        switch mode {
+        case .electrification:
+            switch electrificationLine {
+            case "maximumCurrent":
+                state["tracks"] = "maximum_current"
+            case "power":
+                state["tracks"] = "power"
+            default:
+                state["tracks"] = "voltage_frequency"
+            }
+        case .track:
+            switch trackLine {
+            case "loadingGauge":
+                state["tracks"] = "loading_gauge"
+            case "trackClass":
+                state["tracks"] = "track_class"
+            default:
+                state["tracks"] = "gauge"
+            }
+        default:
+            break
+        }
+        return state
     }
 
     public func save(to prefs: Prefs) {

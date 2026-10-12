@@ -35,8 +35,9 @@ manifest.json  ──▶  Android and iOS apps (MapLibre Native, PMTiles from lo
 | `pipeline/build-all.sh` | Rebuilds every pack listed in a manifest and refreshes the manifest |
 | `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
-| `pipeline/prepare_style.py` | Turns upstream style + sprites + fonts into app assets |
-| `pipeline/build-sprites.sh` | Renders the sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
+| `pipeline/upstream.sh` | The pinned OpenRailwayMap-vector commit that packs and style assets are built from |
+| `pipeline/prepare_style.py` | Turns upstream style + legend + sprites + fonts into app assets |
+| `pipeline/build-sprites.sh` | Regenerates the style assets: upstream style and legend, sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
 | `pipeline/make_manifest.py` | Writes `manifest.json` listing the packs in an output dir |
 | `pipeline/composed_image_golden.mjs` | Reference layouts of composed signal icons, from the website's code, for the app's tests |
 | `pipeline/take_screenshots.sh`, `pipeline/take_ios_screenshots.sh`, `pipeline/make_store_assets.py` | Capture and frame the Play and App Store screenshots, draw the store icon and feature graphic |
@@ -59,7 +60,7 @@ region outline so the coarse world coastline never shows through.
 ## Map key
 
 The Key tab explains the colours and symbols of the current view, using OpenRailwayMap's own legend
-definitions (`legend.json`, copied by `pipeline/prepare_style.py`). Each row is drawn by MapLibre
+definitions (`legend.json`, prepared per view by `pipeline/prepare_style.py`). Each row is drawn by MapLibre
 from sample features styled with the same layers as the map, so the key always matches it. By default
 it lists only what is on screen; "Everything" lists the whole view.
 
@@ -77,11 +78,51 @@ the composed icons in `legend.json` are made of; composing one then takes a few 
 ## How the style switching works
 
 The upstream style is one big MapLibre style whose layers react to `global-state` values
-(`tracks`, `signals`, `stations`, …). MapLibre Native does not evaluate `global-state`, so
-`StyleBuilder` substitutes the values for the selected view and options into the expressions,
+(`tracks`, `stations`, the lists of `signals` and `pois` categories, …). The app's views are the
+website's named views (`knownStyles` in upstream's `proxy/js/ui.js`). MapLibre Native does not
+evaluate `global-state`, so `StyleBuilder` substitutes the values for the selected view and options
+into the expressions,
 evaluates every layer's `visibility` expression to a constant and drops hidden layers before
 handing the style to the map. Each installed country pack gets its own copy of the sources and
 layers, so several countries can be shown at once.
+
+## Changes to upstream
+
+The map should look like the website, so changes to OpenRailwayMap's style and tiles are kept small,
+and each is listed here. The code comments where each change is made explain why. Packs and style
+assets are built from the OpenRailwayMap-vector commit pinned in `pipeline/upstream.sh`; the
+committed assets must match the tiles, so after moving the pin every pack has to be rebuilt.
+
+Tiles (`pipeline/sql/offline_tiles.sql`, `build-country.sh`, `trim_zooms.py`):
+
+- `railway_line_high` comes from a copy of upstream's function (`railway_line_high_offline`), which
+  must be kept in step with upstream's column list when the pin moves. Below zoom 10 it merges ways
+  that are drawn the same into one feature per tile, and it carries each way's OSM `layer`, for the
+  bridge levels below.
+- Layers that start at zoom 17 are baked into the deepest pack zoom, and every layer is baked only
+  at the zooms the style draws it at.
+
+Style (`pipeline/prepare_style.py`, at generation):
+
+- The OpenHistoricalMap and terrain sources are dropped; tile sources point at the installed packs.
+- Features MapLibre Native lacks are rewritten: `interpolate-hcl`, `icon-overlap`/`text-overlap`,
+  CSS Color 4 `hsl()`, and per-feature `line-dasharray` and `text-font` (the layer is split into one
+  layer per value).
+- Track numbers are shown in the Train protection view too, placed after the signals so they fill
+  the gaps between them.
+- Bridges hide what passes under them: each gets a solid mask under its railing, and bridges on OSM
+  `layer` 2 and up are drawn in a second pass over the lower ones, so at a crossing like Berlin
+  Gleisdreieck the upper line visibly runs over the lower one.
+
+Style (`StyleBuilder`, at runtime): `global-state` is substituted, see above, and all of a pack's
+upstream sources are read from its one file.
+
+Key (`prepare_style.py`): upstream has one legend for every map configuration, in sections that each
+apply to some `global-state`; it is flattened into one key per app view, leaving only the conditions
+on the user's options for the app to check. The route view is left out, and station samples get a
+`localized_name`.
+
+Symbols (`pipeline/symbols/`): the "unknown signal" icons are replaced, see `INSTALL.md`.
 
 ## License
 

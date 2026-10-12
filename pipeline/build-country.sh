@@ -36,7 +36,7 @@ PIPELINE="$ROOT/pipeline"
 WORK="$PIPELINE/work"
 OUT="$PIPELINE/out"
 ORM="$WORK/OpenRailwayMap-vector"
-ORM_REF="${ORM_REF:-master}"
+source "$PIPELINE/upstream.sh"
 PACK_ID="${REGION##*/}"
 PACK_OUT="$OUT/$PACK_ID"
 DB_PORT="${DB_PORT:-5439}"
@@ -60,9 +60,7 @@ fi
 echo "data timestamp: $DATA_DATE"
 
 echo "== OpenRailwayMap-vector checkout =="
-if [[ ! -d "$ORM/.git" ]]; then
-  git clone --depth 1 --branch "$ORM_REF" https://github.com/hiddewie/OpenRailwayMap-vector.git "$ORM"
-fi
+checkout_upstream "$ORM"
 cp "$PIPELINE/compose.override.yaml" "$ORM/compose.override.yaml"
 
 echo "== Filter railway data =="

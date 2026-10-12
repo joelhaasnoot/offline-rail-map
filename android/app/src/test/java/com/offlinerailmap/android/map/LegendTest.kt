@@ -28,7 +28,7 @@ class LegendTest {
         """{"countries":["DE"],"sourceLayers":{
           "high-railway_line_high":{"key":["usage"],"features":[
             {"legend":"Main line","type":"line","properties":{"usage":"main"},"keys":["main"]},
-            {"legend":"Standard gauge","type":"line","properties":{"gauge0":"1435"},"mapState":{"trackRailwayLine":"gauge"},"keys":[""]},
+            {"legend":"Standard gauge","type":"line","properties":{"gauge0":"1435"},"mapState":{"tracks":"gauge"},"keys":[""]},
             {"legend":"Siding","type":"line","minzoom":14,"properties":{"usage":"siding"},"keys":["siding"]},
             {"legend":"Ferry","type":"line","properties":{"feature":"ferry"},"keys":[]}
           ]},
@@ -40,7 +40,7 @@ class LegendTest {
         }}""",
     )
 
-    private val gaugeState = mapOf<String, Any?>("trackRailwayLine" to "gauge")
+    private val gaugeState = mapOf<String, Any?>("tracks" to "gauge")
 
     @Test
     fun keyPartBehavesLikeJavaScriptString() {
@@ -77,7 +77,7 @@ class LegendTest {
         val entries = Legend.entries(legendView, listOf(lines, signals), gaugeState, zoom = 12, inView = null)
         assertEquals(listOf("Main line", "Standard gauge", "Ferry"), entries.map { it.label })
 
-        val loadingGauge = Legend.entries(legendView, listOf(lines), mapOf("trackRailwayLine" to "loadingGauge"), 12, null)
+        val loadingGauge = Legend.entries(legendView, listOf(lines), mapOf("tracks" to "loading_gauge"), 12, null)
         assertFalse(loadingGauge.any { it.label == "Standard gauge" })
 
         val zoomedIn = Legend.entries(legendView, listOf(lines, signals), gaugeState, zoom = 14, inView = null)
