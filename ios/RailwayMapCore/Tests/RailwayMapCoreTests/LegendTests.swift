@@ -106,6 +106,23 @@ final class LegendTests: XCTestCase {
         XCTAssertTrue(Legend.entries(legendView: legendView, layers: [lines, signals], state: gaugeState, zoom: 14, inView: [:]).isEmpty)
     }
 
+    func testOnScreenOperatorsMatchTheShippedLegend() throws {
+        let operatorView = try StyleBuilder(assets: StyleBuilderTests.assets).legendView(modeId: "operator")
+        let source = try XCTUnwrap(operatorView["sourceLayers"]?["high-railway_line_high"])
+        // Tiles carry operator as a Postgres array literal; merged low-zoom lines leave it out.
+        let tileFeatures: [[String: JSON]] = [
+            ["operator": "{ProRail}", "primary_operator": "ProRail"],
+            ["primary_operator": "DB InfraGO AG"],
+        ]
+        let keys = tileFeatures.reduce(into: Set<String>()) { keys, props in
+            keys.formUnion(Legend.featureKeys(sourceLayer: source) { props[$0] })
+        }
+        let entries = Legend.entries(
+            legendView: operatorView, layers: [lines], state: [:], zoom: 14, inView: ["high-railway_line_high": keys]
+        )
+        XCTAssertEqual(["(DE) DB InfraGO AG", "(NL) ProRail"], entries.map { $0.label.components(separatedBy: ",")[0] })
+    }
+
     func testSamplesArePlacedInTheirRowAndVariantsShareIt() {
         let entries = Legend.entries(legendView: legendView, layers: [lines, signals], state: gaugeState, zoom: 14, inView: nil)
         let signal = entries[0]
