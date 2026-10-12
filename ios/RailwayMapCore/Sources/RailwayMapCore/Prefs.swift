@@ -67,6 +67,11 @@ public final class Prefs: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "trackLine") }
     }
 
+    public var signalsLine: String {
+        get { string("signalsLine", "trainProtection") }
+        set { defaults.set(newValue, forKey: "signalsLine") }
+    }
+
     public var stationLowZoomLabel: String {
         get { string("stationLowZoomLabel", "label") }
         set { defaults.set(newValue, forKey: "stationLowZoomLabel") }

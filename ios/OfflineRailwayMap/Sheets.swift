@@ -232,6 +232,14 @@ struct OptionsContent: View {
                     Text("Track gauge").tag("gauge")
                     Text("Loading gauge").tag("loadingGauge")
                     Text("Track class").tag("trackClass")
+                    Text("Number of tracks").tag("passengerLines")
+                }
+                .labelsHidden()
+            }
+            Section("Train protection view shows") {
+                Picker("Train protection view shows", selection: $options.signalsLine) {
+                    Text("Train protection").tag("trainProtection")
+                    Text("Radio").tag("radio")
                 }
                 .labelsHidden()
             }

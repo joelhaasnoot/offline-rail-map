@@ -296,7 +296,8 @@ def merge_sprites(suffix):
 # values are the colourings the app offers in those views.
 VIEW_OPTIONS = {
     "electrification": {"tracks": ["voltage_frequency", "maximum_current", "power"]},
-    "track": {"tracks": ["gauge", "loading_gauge", "track_class"]},
+    "track": {"tracks": ["gauge", "loading_gauge", "track_class", "passenger_lines"]},
+    "signals": {"tracks": ["train_protection", "radio"]},
 }
 OPTION_KEYS = {"showConstructionInfrastructure", "showProposedInfrastructure", "showAbandonedInfrastructure",
                "showRazedInfrastructure", "stationLowZoomLabel"}
@@ -340,14 +341,16 @@ def flatten_legend(legend, view, fixed):
     for name, sections in legend["sourceLayers"].items():
         if name.split("-", 1)[0] in DROP_SOURCES:
             continue
-        keys, features = set(), []
+        keys, features = [], []
         for section in sections.values():
             applies, section_left = resolve_map_state(section.get("mapState"), fixed, options)
             if not applies:
                 continue
             keyed = bool(section.get("key")) or bool(section.get("matchKeys"))
             if keyed:
-                keys.add(json.dumps([section.get("key"), section.get("matchKeys")]))
+                for key in [section.get("key") or []] + (section.get("matchKeys") or []):
+                    if key not in keys:
+                        keys.append(key)
             for item in section.get("features", []):
                 applies, item_left = resolve_map_state(item.get("mapState"), fixed, options)
                 if not applies:
@@ -371,11 +374,12 @@ def flatten_legend(legend, view, fixed):
                     # without a key, also next to keyed sections of the same layer.
                     item["keys"] = []
                 features.append(item)
-        if len(keys) > 1:
-            sys.exit(f"legend {view}: sections of {name} use different keys: {keys}")
         if not features:
             continue
-        key, match_keys = json.loads(keys.pop()) if keys else ([], None)
+        # Sections of a view's line colourings (VIEW_OPTIONS) can key features differently, e.g. by train
+        # protection or by radio: the layer matches on all of them. Items stay tied to their colouring
+        # by mapState, so a key of another section only ever lists entries that already apply.
+        key, match_keys = (keys[0], keys[1:]) if keys else ([], None)
         data = {"key": key, "features": features}
         if match_keys:
             data["matchKeys"] = match_keys
