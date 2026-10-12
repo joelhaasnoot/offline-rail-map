@@ -132,5 +132,8 @@ sealed class DownloadState {
     data class Running(val bytesDone: Long, val bytesTotal: Long, val stage: String) : DownloadState() {
         val fraction: Float get() = if (bytesTotal > 0) (bytesDone.toFloat() / bytesTotal).coerceIn(0f, 1f) else 0f
     }
-    data class Failed(val message: String) : DownloadState()
+    /** [bytesDone] bytes were kept; downloading again continues from there. */
+    data class Failed(val message: String, val bytesDone: Long = 0) : DownloadState() {
+        val resumable: Boolean get() = bytesDone > 0
+    }
 }

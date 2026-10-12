@@ -32,6 +32,15 @@ class PackDirsTest {
     }
 
     @Test
+    fun foldersNameTheirPack() {
+        assertEquals("netherlands", PackDirs.idOf("netherlands"))
+        assertEquals("netherlands", PackDirs.idOf("netherlands@12"))
+        assertEquals("ireland-and-northern-ireland", PackDirs.idOf("ireland-and-northern-ireland@12.download"))
+        assertEquals(12L, PackDirs.timestamp("netherlands@12.download"))
+        assertEquals(0L, PackDirs.timestamp("netherlands"))
+    }
+
+    @Test
     fun highestVersionWins() {
         val old = Copy("belgium", 1, "belgium")
         val new = Copy("belgium", 3, "belgium@200")

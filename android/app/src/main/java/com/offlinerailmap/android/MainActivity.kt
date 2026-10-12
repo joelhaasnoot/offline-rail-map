@@ -13,6 +13,7 @@ import com.offlinerailmap.android.ui.LegendContext
 import com.google.gson.JsonElement
 import kotlin.math.floor
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
@@ -210,6 +211,17 @@ fun MapScreen() {
     }
     val coverage = remember(viewport, viewportZoom, installed, available) {
         coverageFor(viewport, viewportZoom, installed, available)
+    }
+
+    // Downloads continue in the background with a progress notification; ask to show it on the first one.
+    val activeDownloads by PackStore.active.collectAsState()
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(activeDownloads.isNotEmpty()) {
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (activeDownloads.isNotEmpty() && !granted) {
+            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
