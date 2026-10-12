@@ -7,7 +7,8 @@ import Foundation
  Naming of pack folders under `Application Support/packs`, identical to the Android app.
 
  A download goes into `<id>@<timestamp>.download` and is renamed to `<id>@<timestamp>` once every
- file and `pack.json` are in place, so an installed pack is never half-written. An update therefore
+ file and `pack.json` are in place, so an installed pack is never half-written. A download that
+ stopped part way keeps its staging folder so it can continue where it left off. An update therefore
  sits next to the previous copy for a moment; the newest copy wins and the older one is removed.
  Each copy has its own path, so the map never mixes cached data of two versions.
  */
@@ -31,7 +32,16 @@ public enum PackDirs {
         name == id || name.hasPrefix("\(id)@")
     }
 
-    private static func timestamp(_ name: String) -> Int64 {
+    /// The id of the pack a folder, finished or not, belongs to.
+    public static func idOf(_ name: String) -> String {
+        let installed = installedName(stagingName: name)
+        guard let at = installed.lastIndex(of: "@") else {
+            return installed
+        }
+        return String(installed[..<at])
+    }
+
+    public static func timestamp(_ name: String) -> Int64 {
         guard let at = name.lastIndex(of: "@") else {
             return 0
         }

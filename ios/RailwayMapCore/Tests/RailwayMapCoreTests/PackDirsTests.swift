@@ -31,6 +31,14 @@ final class PackDirsTests: XCTestCase {
         XCTAssertFalse(PackDirs.belongsTo("ireland-and-northern-ireland", id: "ireland"))
     }
 
+    func testFoldersNameTheirPack() {
+        XCTAssertEqual(PackDirs.idOf("netherlands"), "netherlands")
+        XCTAssertEqual(PackDirs.idOf("netherlands@12"), "netherlands")
+        XCTAssertEqual(PackDirs.idOf("ireland-and-northern-ireland@12.download"), "ireland-and-northern-ireland")
+        XCTAssertEqual(PackDirs.timestamp("netherlands@12.download"), 12)
+        XCTAssertEqual(PackDirs.timestamp("netherlands"), 0)
+    }
+
     func testHighestVersionWins() {
         let old = Copy(id: "belgium", version: 1, folder: "belgium")
         let new = Copy(id: "belgium", version: 3, folder: "belgium@200")
