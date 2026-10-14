@@ -260,6 +260,12 @@ private fun OptionsContent(options: MapOptions, onChange: (MapOptions) -> Unit) 
             RadioRow("Track gauge", options.trackLine == "gauge") { onChange(options.copy(trackLine = "gauge")) }
             RadioRow("Loading gauge", options.trackLine == "loadingGauge") { onChange(options.copy(trackLine = "loadingGauge")) }
             RadioRow("Track class", options.trackLine == "trackClass") { onChange(options.copy(trackLine = "trackClass")) }
+            RadioRow("Number of tracks", options.trackLine == "passengerLines") { onChange(options.copy(trackLine = "passengerLines")) }
+
+            Spacer(Modifier.height(8.dp))
+            Text("Train protection view shows", style = MaterialTheme.typography.titleSmall)
+            RadioRow("Train protection", options.signalsLine == "trainProtection") { onChange(options.copy(signalsLine = "trainProtection")) }
+            RadioRow("Radio", options.signalsLine == "radio") { onChange(options.copy(signalsLine = "radio")) }
 
             Spacer(Modifier.height(16.dp))
     }

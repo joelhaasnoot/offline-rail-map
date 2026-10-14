@@ -42,6 +42,10 @@ object Prefs {
         get() = prefs.getString("trackLine", "gauge") ?: "gauge"
         set(v) = prefs.edit().putString("trackLine", v).apply()
 
+    var signalsLine: String
+        get() = prefs.getString("signalsLine", "trainProtection") ?: "trainProtection"
+        set(v) = prefs.edit().putString("signalsLine", v).apply()
+
     var stationLowZoomLabel: String
         get() = prefs.getString("stationLowZoomLabel", "label") ?: "label"
         set(v) = prefs.edit().putString("stationLowZoomLabel", v).apply()

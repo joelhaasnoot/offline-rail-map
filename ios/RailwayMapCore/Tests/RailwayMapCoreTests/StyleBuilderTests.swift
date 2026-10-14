@@ -123,6 +123,40 @@ final class StyleBuilderTests: XCTestCase {
         let gaugeIds = try builder.ormLayers(mode: .track, options: MapOptions()).layers.compactMap { $0["id"]?.string }
         let loadingGaugeIds = try builder.ormLayers(mode: .track, options: loadingGauge).layers.compactMap { $0["id"]?.string }
         XCTAssertNotEqual(Set(gaugeIds), Set(loadingGaugeIds))
+        var passengerLines = MapOptions()
+        passengerLines.trackLine = "passengerLines"
+        XCTAssertEqual("passenger_lines", try builder.ormLayers(mode: .track, options: passengerLines).state["tracks"])
+        var radio = MapOptions()
+        radio.signalsLine = "radio"
+        XCTAssertEqual("train_protection", try builder.ormLayers(mode: .signals, options: MapOptions()).state["tracks"])
+        XCTAssertEqual("radio", try builder.ormLayers(mode: .signals, options: radio).state["tracks"])
+        XCTAssertEqual("speed", try builder.ormLayers(mode: .speed, options: radio).state["tracks"])
+    }
+
+    func testKeyFollowsTheLineColouring() throws {
+        let builder = StyleBuilder(assets: Self.assets)
+        func labels(_ mode: MapMode, _ options: MapOptions, zoom: Int) throws -> [String] {
+            let resolved = try builder.ormLayers(mode: mode, options: options)
+            return Legend.entries(
+                legendView: try builder.legendView(modeId: mode.id), layers: resolved.layers, state: resolved.state,
+                zoom: zoom, inView: nil
+            ).map(\.label)
+        }
+        var radio = MapOptions()
+        radio.signalsLine = "radio"
+        var passengerLines = MapOptions()
+        passengerLines.trackLine = "passengerLines"
+        for zoom in [6, 14] {
+            let protection = try labels(.signals, MapOptions(), zoom: zoom)
+            let radioLabels = try labels(.signals, radio, zoom: zoom)
+            XCTAssertTrue(protection.contains { $0.hasPrefix("European Train Control System (ETCS)") }, "\(zoom)")
+            XCTAssertFalse(protection.contains("GSM-R"), "\(zoom)")
+            XCTAssertTrue(radioLabels.contains("GSM-R"), "\(zoom)")
+            XCTAssertFalse(radioLabels.contains { $0.hasPrefix("European Train Control System (ETCS)") }, "\(zoom)")
+
+            XCTAssertTrue(try labels(.track, passengerLines, zoom: zoom).contains("2 lines"), "\(zoom)")
+            XCTAssertFalse(try labels(.track, MapOptions(), zoom: zoom).contains("2 lines"), "\(zoom)")
+        }
     }
 
     func testViewsMatchTheWebsite() throws {
