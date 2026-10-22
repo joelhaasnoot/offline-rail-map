@@ -66,6 +66,14 @@ Each pack also carries the Geofabrik region polygon (`pipeline/coverage.py`), wh
 tell "no data here yet" from "this area is in a pack you haven't downloaded" and to offer that
 download directly on the map.
 
+### Troubleshooting
+
+- `docker compose build` fails with `failed to prepare extraction snapshot ... parent snapshot ...
+  does not exist`: the BuildKit cache is stale, typically after an OS or containerd/Docker upgrade.
+  Clear it with `docker builder prune -af` and build again.
+- `no railway lines in <region>, nothing to build`: the region's extract has no railway lines (for
+  example Andorra), so there is no pack to make.
+
 ## World overview
 
 The zoom 0–4 world map bundled in the app is rebuilt with:

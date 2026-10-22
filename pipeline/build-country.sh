@@ -7,7 +7,7 @@
 #   pipeline/build-country.sh <geofabrik-region-id> [--maxzoom N] [--no-basemap] [--basemap-maxzoom N]
 #
 # Example: pipeline/build-country.sh netherlands
-#          pipeline/build-country.sh europe/belgium     (nested ids use the last path segment as pack id)
+#          pipeline/build-country.sh europe/belgium     (<parent>/<id> also works; the pack id is the last path segment)
 #
 # Produces pipeline/out/<id>/railway.pmtiles (+ basemap.pmtiles, pack-meta.json).
 # Finished files replace the old ones in one step, so a pack being rebuilt can keep being served.
@@ -47,7 +47,7 @@ JAVA="${JAVA:-java}"
 mkdir -p "$WORK" "$PACK_OUT"
 
 echo "== Region lookup =="
-IFS=$'\t' read -r PBF_URL NAME PARENT < <(python3 "$PIPELINE/geofabrik.py" "$WORK" "$REGION")
+IFS=$'\t' read -r PBF_URL NAME PARENT REGION_ID < <(python3 "$PIPELINE/geofabrik.py" "$WORK" "$REGION")
 echo "$NAME ($PARENT): $PBF_URL"
 
 echo "== OSM extract =="
@@ -76,6 +76,11 @@ psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$PIPELINE/sql/offline_tiles.sql"
 echo "== Bounding box =="
 BBOX="$(psql "$DB_URL" -tAc "select round(ST_XMin(e)::numeric-0.05,3)||','||round(ST_YMin(e)::numeric-0.05,3)||','||round(ST_XMax(e)::numeric+0.05,3)||','||round(ST_YMax(e)::numeric+0.05,3) from (select ST_Extent(ST_Transform(way,4326)) e from railway_line) s")"
 echo "bbox: $BBOX"
+if [[ -z "$BBOX" ]]; then
+  echo "no railway lines in $REGION, nothing to build" >&2
+  (cd "$ORM" && docker compose stop db)
+  exit 1
+fi
 
 echo "== Bake vector tiles =="
 # Functions that only start at zoom 17 are pulled down to the baked maximum zoom so their data is
@@ -113,7 +118,7 @@ if [[ "$BASEMAP" == "1" ]]; then
 fi
 
 echo "== Pack metadata =="
-COVERAGE="$(python3 "$PIPELINE/coverage.py" "$WORK" "$REGION")"
+COVERAGE="$(python3 "$PIPELINE/coverage.py" "$WORK" "$REGION_ID")"
 python3 - "$PACK_OUT/pack-meta.json" "$PACK_ID" "$NAME" "$PARENT" "$BBOX" "$DATA_DATE" "$COVERAGE" <<'PY'
 import json, sys
 out, pack_id, name, parent, bbox, date, coverage = sys.argv[1:]
