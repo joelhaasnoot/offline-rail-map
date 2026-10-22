@@ -99,6 +99,9 @@ Tiles (`pipeline/sql/offline_tiles.sql`, `build-country.sh`, `trim_zooms.py`):
   must be kept in step with upstream's column list when the pin moves. Below zoom 10 it merges ways
   that are drawn the same into one feature per tile, and it carries each way's OSM `layer`, for the
   bridge levels below.
+- `level_crossings_grouped` and `level_crossings_grouped_buffered` read the materialized table
+  `level_crossings_grouped` instead of upstream's view on it, which cannot use the spatial index and
+  made zooms 15 and 16 take hours on large countries. The tiles hold the same features.
 - Layers that start at zoom 17 are baked into the deepest pack zoom, and every layer is baked only
   at the zooms the style draws it at.
 

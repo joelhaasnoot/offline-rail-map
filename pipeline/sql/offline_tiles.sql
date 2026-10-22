@@ -191,3 +191,50 @@ RETURN (
     WHERE way IS NOT NULL
   ) END
 );
+
+-- Upstream's level_crossings_grouped and level_crossings_grouped_buffered read
+-- level_crossings_grouped_view, which joins every group to pois and aggregates them all before the
+-- tile filter, so it cannot use the spatial index: about 0.8 s per tile on Poland. Both functions
+-- only need columns of the materialized table level_crossings_grouped (import/sql/stations_clustered.sql),
+-- whose buffered column is indexed, so they read that instead (a few ms per tile). CREATE OR REPLACE
+-- keeps upstream's function comments, which martin reads for the layer fields.
+CREATE OR REPLACE FUNCTION level_crossings_grouped(z integer, x integer, y integer)
+  RETURNS bytea
+  LANGUAGE SQL
+  IMMUTABLE
+  STRICT
+  PARALLEL SAFE
+RETURN (
+  SELECT
+    ST_AsMVT(tile, 'level_crossings_grouped', 4096, 'way')
+  FROM (
+    SELECT
+      ST_AsMVTGeom(center, ST_TileEnvelope(z, x, y), extent => 4096, buffer => 64, clip_geom => true) AS way,
+      id,
+      ref,
+      feature
+    FROM level_crossings_grouped
+    WHERE buffered && ST_TileEnvelope(z, x, y)
+  ) as tile
+  WHERE way IS NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION level_crossings_grouped_buffered(z integer, x integer, y integer)
+  RETURNS bytea
+  LANGUAGE SQL
+  IMMUTABLE
+  STRICT
+  PARALLEL SAFE
+RETURN (
+  SELECT
+    ST_AsMVT(tile, 'level_crossings_grouped_buffered', 4096, 'way')
+  FROM (
+    SELECT
+      ST_AsMVTGeom(buffered, ST_TileEnvelope(z, x, y), extent => 4096, buffer => 64, clip_geom => true) AS way,
+      id
+    FROM level_crossings_grouped
+    WHERE buffered && ST_TileEnvelope(z, x, y)
+      AND count > 1
+  ) as tile
+  WHERE way IS NOT NULL
+);
