@@ -19,6 +19,22 @@ pipeline/make_manifest.py pipeline/out --base-url https://packs.example.com
 Railway tiles go to zoom 16. Basemaps stop at zoom 12 by default: compared side by side with zoom 13
 they look nearly identical, at 40% of the size (Netherlands: 54 MB instead of 142 MB).
 
+Large, mostly empty countries would get a basemap of gigabytes, nearly all of it far from any
+track (Canada: 2.5 GB). When a pack comes out over 1.5 GB, its basemap is built again for the rail
+corridor only: everything within 100 km of a railway, with enclosed holes filled in
+(`pipeline/corridor.py` describes how). Outside the corridor the app shows its world overview. The
+pack remembers the choice in `pack-meta.json`, so later builds go straight to the corridor.
+Australia stays under the limit but is limited all the same (`CORRIDOR_REGIONS` in
+`build-country.sh`).
+
+```bash
+pipeline/build-country.sh canada                           # limited automatically when over 1.5 GB
+pipeline/build-country.sh australia                        # always limited (CORRIDOR_REGIONS)
+pipeline/build-country.sh sweden --corridor always         # limit any pack, whatever the size
+pipeline/build-country.sh canada --corridor never          # full basemap again
+pipeline/build-country.sh canada --corridor-km 50          # a narrower corridor
+```
+
 To rebuild every pack that is in the current manifest (smallest first, refreshing the manifest after
 each pack, failures logged to `pipeline/work/logs/` and skipped):
 
