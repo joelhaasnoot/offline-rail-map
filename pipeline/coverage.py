@@ -15,22 +15,26 @@ import urllib.request
 INDEX_URL = "https://download.geofabrik.de/index-v1.json"
 
 
-def rings_for(cache_dir, region):
+def geometry_for(cache_dir, region):
+    """GeoJSON geometry (Polygon or MultiPolygon) of a Geofabrik region."""
     path = os.path.join(cache_dir, "geofabrik-index-geom.json")
     if not os.path.isfile(path) or time.time() - os.path.getmtime(path) > 7 * 86400:
         urllib.request.urlretrieve(INDEX_URL, path)
     index = json.load(open(path))
     for feature in index["features"]:
-        if feature["properties"]["id"] != region:
-            continue
-        geom = feature["geometry"]
-        polygons = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
-        rings = []
-        for polygon in polygons:
-            outer = polygon[0]
-            rings.append([[round(x, 3), round(y, 3)] for x, y in outer])
-        return rings
+        if feature["properties"]["id"] == region:
+            return feature["geometry"]
     sys.exit(f"unknown Geofabrik region '{region}'")
+
+
+def rings_for(cache_dir, region):
+    geom = geometry_for(cache_dir, region)
+    polygons = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    rings = []
+    for polygon in polygons:
+        outer = polygon[0]
+        rings.append([[round(x, 3), round(y, 3)] for x, y in outer])
+    return rings
 
 
 if __name__ == "__main__":

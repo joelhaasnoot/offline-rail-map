@@ -35,6 +35,7 @@ manifest.json  ──▶  Android and iOS apps (MapLibre Native, PMTiles from lo
 | `pipeline/build-all.sh` | Rebuilds every pack listed in a manifest and refreshes the manifest |
 | `pipeline/build-world.sh` | Builds the zoom 0–4 world overview bundled in the app |
 | `pipeline/bake_tiles.py` | Walks the tile pyramid against Martin and writes MBTiles |
+| `pipeline/corridor.py` | Works out the area within 100 km of a railway, which the basemap of a very large pack is limited to |
 | `pipeline/upstream.sh` | The pinned OpenRailwayMap-vector commit that packs and style assets are built from |
 | `pipeline/prepare_style.py` | Turns upstream style + legend + sprites + fonts into app assets |
 | `pipeline/build-sprites.sh` | Regenerates the style assets: upstream style and legend, sprite sheets from upstream symbols plus `pipeline/symbols/` replacements |
